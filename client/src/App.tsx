@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { api, setToken, getToken, clearToken } from './api';
+import React, { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { api, setToken, getToken, clearToken } from "./api";
+
+const warning = "⚠️"; // warning sign
+const noEntry = "⛔"; // no entry
+const prohibited = "🚫"; // prohibited
 
 interface User {
   id: number;
@@ -39,14 +43,14 @@ interface KnockoutRound {
 }
 
 function Login({ onLogin }: { onLogin: (user: User) => void }) {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [isRegister, setIsRegister] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     try {
       if (isRegister) {
         const { user, token } = await api.auth.register(username, password);
@@ -64,7 +68,7 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
 
   return (
     <div className="auth-form">
-      <h2>{isRegister ? 'Register' : 'Login'}</h2>
+      <h2>{isRegister ? "Register" : "Login"}</h2>
       <form onSubmit={handleSubmit}>
         {error && <div className="error">{error}</div>}
         <input
@@ -81,16 +85,16 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <button type="submit">{isRegister ? 'Register' : 'Login'}</button>
+        <button type="submit">{isRegister ? "Register" : "Login"}</button>
         <div className="link">
           {isRegister ? (
             <span>
-              Already have an account?{' '}
+              Already have an account?{" "}
               <a onClick={() => setIsRegister(false)}>Login</a>
             </span>
           ) : (
             <span>
-              Don't have an account?{' '}
+              Don't have an account?{" "}
               <a onClick={() => setIsRegister(true)}>Register</a>
             </span>
           )}
@@ -100,25 +104,19 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
   );
 }
 
-function Game({
-  user,
-  onLogout,
-}: {
-  user: User;
-  onLogout: () => void;
-}) {
-  const [tab, setTab] = useState('groups');
+function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const [tab, setTab] = useState("groups");
   const [groups, setGroups] = useState<Groups>({});
   const [flags, setFlags] = useState<Flags>({});
   const [knockout, setKnockout] = useState<KnockoutRound[]>([]);
   const [predictions, setPredictions] = useState<Predictions>({});
   const [results, setResults] = useState<Results>({});
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState("");
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(''), 2500);
+    setTimeout(() => setToast(""), 2500);
   };
 
   useEffect(() => {
@@ -146,15 +144,18 @@ function Game({
     }
   };
 
-  const flag = (team: string) => flags[team] || '🏳';
+  const flag = (team: string) => flags[team] || "🏳";
 
-  const setScore = async (key: string, h: number | '', a: number | '') => {
+  const setScore = async (key: string, h: number | "", a: number | "") => {
     try {
       await api.predictions.save(key, h, a);
-      setPredictions((prev) => ({ ...prev, [key]: { homeScore: h as number, awayScore: a as number } }));
-      showToast('Prediction saved');
+      setPredictions((prev) => ({
+        ...prev,
+        [key]: { homeScore: h as number, awayScore: a as number },
+      }));
+      showToast("Prediction saved");
     } catch (err) {
-      showToast('Failed to save');
+      showToast("Failed to save");
     }
   };
 
@@ -164,7 +165,17 @@ function Game({
   const groupStandings = (gk: string, scores: Predictions | Results) => {
     const g = groups[gk];
     if (!g) return [];
-    const teams = g.teams.map((t) => ({ name: t, pts: 0, gf: 0, ga: 0, gd: 0, played: 0, w: 0, d: 0, l: 0 }));
+    const teams = g.teams.map((t) => ({
+      name: t,
+      pts: 0,
+      gf: 0,
+      ga: 0,
+      gd: 0,
+      played: 0,
+      w: 0,
+      d: 0,
+      l: 0,
+    }));
     g.matches.forEach((m, i) => {
       const key = `g${gk}m${i}`;
       const sc = scores[key];
@@ -194,18 +205,28 @@ function Game({
       }
     });
     teams.forEach((t) => (t.gd = t.gf - t.ga));
-    teams.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.name.localeCompare(b.name));
+    teams.sort(
+      (a, b) =>
+        b.pts - a.pts ||
+        b.gd - a.gd ||
+        b.gf - a.gf ||
+        a.name.localeCompare(b.name),
+    );
     return teams;
   };
 
-  const renderScoreDisplay = (key: string, scores: Predictions | Results, isAdminView: boolean) => {
+  const renderScoreDisplay = (
+    key: string,
+    scores: Predictions | Results,
+    isAdminView: boolean,
+  ) => {
     const sc = scores[key] || {};
 
     if (isAdminView) {
       if (sc?.homeScore !== undefined && sc?.awayScore !== undefined) {
         return `${sc.homeScore} : ${sc.awayScore}`;
       }
-      return <span className="not-started">Not started yet</span>;
+      return <span className="not-started">{prohibited}</span>;
     } else {
       return (
         <div className="score-input">
@@ -213,11 +234,15 @@ function Game({
             type="number"
             min="0"
             max="20"
-            value={sc.homeScore !== undefined ? sc.homeScore : ''}
+            value={sc.homeScore !== undefined ? sc.homeScore : ""}
             placeholder="-"
             onChange={(e) => {
-              const val = e.target.value === '' ? '' : parseInt(e.target.value);
-              setScore(key, val, sc.awayScore !== undefined ? sc.awayScore : '');
+              const val = e.target.value === "" ? "" : parseInt(e.target.value);
+              setScore(
+                key,
+                val,
+                sc.awayScore !== undefined ? sc.awayScore : "",
+              );
             }}
             onFocus={(e) => e.target.select()}
           />
@@ -226,11 +251,15 @@ function Game({
             type="number"
             min="0"
             max="20"
-            value={sc.awayScore !== undefined ? sc.awayScore : ''}
+            value={sc.awayScore !== undefined ? sc.awayScore : ""}
             placeholder="-"
             onChange={(e) => {
-              const val = e.target.value === '' ? '' : parseInt(e.target.value);
-              setScore(key, sc.homeScore !== undefined ? sc.homeScore : '', val);
+              const val = e.target.value === "" ? "" : parseInt(e.target.value);
+              setScore(
+                key,
+                sc.homeScore !== undefined ? sc.homeScore : "",
+                val,
+              );
             }}
             onFocus={(e) => e.target.select()}
           />
@@ -263,7 +292,12 @@ function Game({
               </thead>
               <tbody>
                 {standings.map((t, idx) => (
-                  <tr key={t.name} className={idx < 2 ? (idx === 0 ? 'qualify-1' : 'qualify-2') : ''}>
+                  <tr
+                    key={t.name}
+                    className={
+                      idx < 2 ? (idx === 0 ? "qualify-1" : "qualify-2") : ""
+                    }
+                  >
                     <td>
                       <span className={`pos-badge p${idx + 1}`}>{idx + 1}</span>
                     </td>
@@ -273,14 +307,19 @@ function Game({
                     </td>
                     <td>{t.played}</td>
                     <td>{t.pts}</td>
-                    <td>{t.gd > 0 ? '+' : ''}{t.gd}</td>
+                    <td>
+                      {t.gd > 0 ? "+" : ""}
+                      {t.gd}
+                    </td>
                     <td>{t.gf}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <div className="matches-section">
-              <h4>{isAdmin ? 'Match Results (auto-fetched)' : 'Your Predictions'}</h4>
+              <h4>
+                {isAdmin ? "Match Results (auto-fetched)" : "Your Predictions"}
+              </h4>
               {g.matches.map((m, i) => {
                 const key = `g${gk}m${i}`;
                 const t1 = g.teams[m[0]];
@@ -318,11 +357,17 @@ function Game({
                 const awayScore = sc?.awayScore;
                 return (
                   <div key={i} className="bk-match">
-                    <div className={`bk-team ${homeScore > awayScore ? 'winner' : ''}`}>
+                    <div
+                      className={`bk-team ${homeScore > awayScore ? "winner" : ""}`}
+                    >
                       <span className="bk-team-name">TBD</span>
                       {isAdmin ? (
                         <div className="bk-score-display">
-                          {homeScore !== undefined ? homeScore : <span className="not-started">Not started yet</span>}
+                          {homeScore !== undefined ? (
+                            homeScore
+                          ) : (
+                            <span className="not-started">{prohibited}</span>
+                          )}
                         </div>
                       ) : (
                         <div className="bk-score-wrap">
@@ -331,10 +376,13 @@ function Game({
                             type="number"
                             min="0"
                             max="20"
-                            value={homeScore !== undefined ? homeScore : ''}
+                            value={homeScore !== undefined ? homeScore : ""}
                             placeholder="-"
                             onChange={(e) => {
-                              const val = e.target.value === '' ? '' : parseInt(e.target.value);
+                              const val =
+                                e.target.value === ""
+                                  ? ""
+                                  : parseInt(e.target.value);
                               setScore(key, val, awayScore);
                             }}
                             onFocus={(e) => e.target.select()}
@@ -342,29 +390,38 @@ function Game({
                         </div>
                       )}
                     </div>
-                    <div className={`bk-team ${awayScore > homeScore ? 'winner' : ''}`}>
+                    <div
+                      className={`bk-team ${awayScore > homeScore ? "winner" : ""}`}
+                    >
                       <span className="bk-team-name">TBD</span>
-                    {isAdmin ? (
-                      <div className="bk-score-display">
-                        {awayScore !== undefined ? awayScore : <span className="not-started">Not started yet</span>}
-                      </div>
-                    ) : (
-                      <div className="bk-score-wrap">
-                        <input
-                          className="bk-score"
-                          type="number"
-                          min="0"
-                          max="20"
-                          value={awayScore !== undefined ? awayScore : ''}
-                          placeholder="-"
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? '' : parseInt(e.target.value);
-                            setScore(key, homeScore, val);
-                          }}
-                          onFocus={(e) => e.target.select()}
-                        />
-                      </div>
-                    )}
+                      {isAdmin ? (
+                        <div className="bk-score-display">
+                          {awayScore !== undefined ? (
+                            awayScore
+                          ) : (
+                            <span className="not-started">Not started yet</span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="bk-score-wrap">
+                          <input
+                            className="bk-score"
+                            type="number"
+                            min="0"
+                            max="20"
+                            value={awayScore !== undefined ? awayScore : ""}
+                            placeholder="-"
+                            onChange={(e) => {
+                              const val =
+                                e.target.value === ""
+                                  ? ""
+                                  : parseInt(e.target.value);
+                              setScore(key, homeScore, val);
+                            }}
+                            onFocus={(e) => e.target.select()}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -377,8 +434,13 @@ function Game({
   );
 
   const renderLeaderboard = () => {
-    const totalRes = Object.keys(results).filter((k) => results[k]?.homeScore !== undefined).length;
-    const totalPred = leaderboard.reduce((acc, p) => acc + p.exact + p.outcome, 0);
+    const totalRes = Object.keys(results).filter(
+      (k) => results[k]?.homeScore !== undefined,
+    ).length;
+    const totalPred = leaderboard.reduce(
+      (acc, p) => acc + p.exact + p.outcome,
+      0,
+    );
 
     return (
       <>
@@ -447,28 +509,38 @@ function Game({
           <div className="subtitle">Prediction Game</div>
         </div>
         <div className="header-right">
+          <span className="user-name">{user.username}</span>
           <button className="nav-btn" onClick={onLogout}>
             Logout
           </button>
         </div>
       </header>
       <div className="tabs">
-        <div className={`tab ${tab === 'groups' ? 'active' : ''}`} onClick={() => setTab('groups')}>
+        <div
+          className={`tab ${tab === "groups" ? "active" : ""}`}
+          onClick={() => setTab("groups")}
+        >
           Group Stage
         </div>
-        <div className={`tab ${tab === 'knockout' ? 'active' : ''}`} onClick={() => setTab('knockout')}>
+        <div
+          className={`tab ${tab === "knockout" ? "active" : ""}`}
+          onClick={() => setTab("knockout")}
+        >
           Knockout
         </div>
-        <div className={`tab ${tab === 'leaderboard' ? 'active' : ''}`} onClick={() => setTab('leaderboard')}>
+        <div
+          className={`tab ${tab === "leaderboard" ? "active" : ""}`}
+          onClick={() => setTab("leaderboard")}
+        >
           Leaderboard
         </div>
       </div>
       <main>
-        {tab === 'groups' && renderGroups()}
-        {tab === 'knockout' && renderKnockout()}
-        {tab === 'leaderboard' && renderLeaderboard()}
+        {tab === "groups" && renderGroups()}
+        {tab === "knockout" && renderKnockout()}
+        {tab === "leaderboard" && renderLeaderboard()}
       </main>
-      <div className={`toast ${toast ? 'show' : ''}`}>{toast}</div>
+      <div className={`toast ${toast ? "show" : ""}`}>{toast}</div>
     </>
   );
 }
@@ -480,8 +552,15 @@ export default function App() {
   useEffect(() => {
     const token = getToken();
     if (token) {
-      api.auth.me()
-        .then((u) => setUser(u as User))
+      api.auth
+        .me()
+        .then((u) => {
+          if (u && u.id) {
+            setUser(u as User);
+          } else {
+            clearToken();
+          }
+        })
         .catch(() => clearToken())
         .finally(() => setLoading(false));
     } else {
@@ -490,7 +569,9 @@ export default function App() {
   }, []);
 
   if (loading) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>;
+    return (
+      <div style={{ padding: "2rem", textAlign: "center" }}>Loading...</div>
+    );
   }
 
   return (
@@ -500,7 +581,13 @@ export default function App() {
           path="/"
           element={
             user ? (
-              <Game user={user} onLogout={() => { clearToken(); setUser(null); }} />
+              <Game
+                user={user}
+                onLogout={() => {
+                  clearToken();
+                  setUser(null);
+                }}
+              />
             ) : (
               <Login onLogin={setUser} />
             )

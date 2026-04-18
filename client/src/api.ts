@@ -39,11 +39,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('token');
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const url = path.includes('?') 
+    ? `${API_BASE}${path}&_t=${Date.now()}` 
+    : `${API_BASE}${path}?_t=${Date.now()}`;
+  const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: 'Request failed' }));
     throw new Error(error.error || 'Request failed');
@@ -65,7 +71,7 @@ export const api = {
         body: JSON.stringify({ username, password }),
       }),
 
-    me: () => request<User>('/auth/me'),
+    me: () => request<{ user: User }>('/auth/me').then(r => r.user),
   },
 
   predictions: {
