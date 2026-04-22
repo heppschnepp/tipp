@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { api, setToken, getToken, clearToken } from "./api";
+import { Tabs } from "./components/Tabs";
 import GroupTab from "./components/GroupTab";
 import KnockoutTab from "./components/KnockoutTab";
 import LeaderboardTab from "./components/LeaderboardTab";
@@ -184,39 +185,12 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
           </button>
         </div>
       </header>
-      <div className="tabs">
-        <div
-          className={`tab ${tab === "groups" ? "active" : ""}`}
-          onClick={() => setTab("groups")}
-        >
-          Group Stage
-        </div>
-        <div
-          className={`tab ${tab === "knockout" ? "active" : ""}`}
-          onClick={() => setTab("knockout")}
-        >
-          Knockout
-        </div>
-        <div
-          className={`tab ${tab === "leaderboard" ? "active" : ""}`}
-          onClick={() => setTab("leaderboard")}
-        >
-          Leaderboard
-        </div>
-        {user.isAdmin && (
-          <div
-            className={`tab ${tab === "users" ? "active" : ""}`}
-            onClick={() => {
-              if (users.length === 0) {
-                loadUsers();
-              }
-              setTab("users");
-            }}
-          >
-            Users
-          </div>
-        )}
-      </div>
+      <Tabs
+        tab={tab}
+        setTab={setTab}
+        isAdmin={user.isAdmin}
+        onUsersClick={users.length === 0 ? loadUsers : undefined}
+      />
       <main>
         {tab === "groups" && (
           <GroupTab
