@@ -1,24 +1,24 @@
 const API_BASE = '/api';
 
-interface User {
+export interface User {
   id: number;
   username: string;
   isAdmin: boolean;
 }
 
-interface AuthResponse {
+export interface AuthResponse {
   token: string;
   user: User;
 }
 
-interface Predictions {
+export interface Predictions {
   [key: string]: {
     homeScore: number;
     awayScore: number;
   };
 }
 
-interface Results {
+export interface Results {
   [key: string]: {
     homeScore: number;
     awayScore: number;
@@ -27,12 +27,26 @@ interface Results {
   };
 }
 
-interface LeaderboardEntry {
+export interface LeaderboardEntry {
   userId: number;
   username: string;
   exact: number;
   outcome: number;
   total: number;
+}
+
+export interface Groups {
+  [key: string]: { teams: string[]; matches: number[][] };
+}
+
+export interface Flags {
+  [key: string]: string;
+}
+
+export interface KnockoutRound {
+  id: string;
+  name: string;
+  matches: number;
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
