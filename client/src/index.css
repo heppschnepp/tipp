@@ -182,3 +182,19 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
   .groups-grid { grid-template-columns: 1fr; }
   header h1 { font-size: 22px; }
 }
+
+.users-panel h2 { font-family: 'Bebas Neue'; font-size: 28px; letter-spacing: 1px; margin-bottom: 1.5rem; }
+.users-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+.users-table th, .users-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+.users-table th { background: var(--green); color: #fff; font-weight: 500; font-size: 13px; }
+.users-table tr:last-child td { border-bottom: none; }
+.users-table tr:hover td { background: var(--green-light); }
+.users-table .user-name { font-weight: 500 !important; color: #1a1a18 !important; }
+.users-table .user-email { color: var(--muted); font-size: 12px; display: block; margin-top: 2px; }
+.btn-reset { background: var(--red); color: #fff; border: none; padding: 6px 12px; border-radius: 6px;
+  font-size: 12px; cursor: pointer; }
+.btn-reset:hover { opacity: 0.9; }
+.reset-form { display: flex; gap: 8px; align-items: center; }
+.reset-form input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; width: 140px; }
+.btn-confirm { background: var(--green); color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+.btn-cancel { background: var(--muted); color: #fff; border: none; padding: 6px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; }

@@ -133,7 +133,8 @@ app.get('/api/auth/me', authMiddleware, async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ user: result.recordset[0] });
+    const u = result.recordset[0];
+    res.json({ user: { id: u.Id, username: u.Username, email: u.Email, isAdmin: !!u.IsAdmin, createdAt: u.CreatedAt } });
   } catch (err: any) {
     console.error(err);
     res.status(500).json({ error: 'Failed to get user' });
@@ -465,6 +466,52 @@ app.get('/api/knockout', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('Knockout error:', err);
     res.status(500).json({ error: 'Failed to get knockout rounds' });
+  }
+});
+
+// ==================== USER MANAGEMENT ====================
+
+app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
+  try {
+    const db = await getDb();
+    const result = await db.query('SELECT Id, Username, Email, IsAdmin, CreatedAt FROM tipp_Users ORDER BY Id');
+    const users = result.recordset.map((u: any) => ({
+      id: u.Id,
+      username: u.Username,
+      email: u.Email,
+      isAdmin: !!u.IsAdmin,
+      createdAt: u.CreatedAt,
+    }));
+    res.json(users);
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to get users' });
+  }
+});
+
+app.post('/api/admin/reset-password', authMiddleware, adminMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { userId, newPassword } = req.body;
+    if (!userId || !newPassword) {
+      return res.status(400).json({ error: 'User ID and new password required' });
+    }
+
+    const db = await getDb();
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    
+    const request = db.request();
+    request.input('userId', sql.Int, userId);
+    request.input('passwordHash', sql.VarChar, passwordHash);
+    const result = await request.query('UPDATE tipp_Users SET PasswordHash = @passwordHash WHERE Id = @userId');
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

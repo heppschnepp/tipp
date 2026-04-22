@@ -107,6 +107,17 @@ export const api = {
   knockout: {
     get: () => request<{ id: string; name: string; matches: number }[]>('/knockout'),
   },
+
+  admin: {
+    users: {
+      get: () => request<{ id: number; username: string; email: string; isAdmin: boolean; createdAt: string }[]>('/admin/users'),
+      resetPassword: (userId: number, newPassword: string) =>
+        request<{ success: boolean }>('/admin/reset-password', {
+          method: 'POST',
+          body: JSON.stringify({ userId, newPassword }),
+        }),
+    },
+  },
 };
 
 export function setToken(token: string) {
