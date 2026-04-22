@@ -84,6 +84,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
 .standings tr.qualify-1 td:first-child { border-left: 3px solid var(--gold); }
 .standings tr.qualify-2 td:first-child { border-left: 3px solid #aaa; }
 .standings .flag { font-size: 16px; margin-right: 6px; }
+.team-flag { width: 24px; height: 18px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
 .standings .team-name { font-weight: 500; font-size: 13px; }
 .pos-badge { display: inline-flex; align-items: center; justify-content: center;
   width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 600;

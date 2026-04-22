@@ -48,6 +48,7 @@ export default function KnockoutTab({
                     <div
                       className={`bk-team ${homeScore > awayScore ? "winner" : ""}`}
                     >
+                      <img src="/flags/xx.png" alt="TBD" className="team-flag" />
                       <span className="bk-team-name">TBD</span>
                       {isAdmin ? (
                         <div className="bk-score-display">
@@ -81,6 +82,7 @@ export default function KnockoutTab({
                     <div
                       className={`bk-team ${awayScore > homeScore ? "winner" : ""}`}
                     >
+                      <img src="/flags/xx.png" alt="TBD" className="team-flag" />
                       <span className="bk-team-name">TBD</span>
                       {isAdmin ? (
                         <div className="bk-score-display">

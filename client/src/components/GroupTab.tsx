@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api, Flags, Groups, Predictions } from "../api";
 import { prohibited, Results } from "../App";
+import { TEAM_CODES } from "../data/teamFlags";
 
 interface GroupTabData {
   groups: Groups;
@@ -13,7 +14,7 @@ interface GroupTabData {
 export default function GroupTab({
   groups,
   results,
-  flags,
+  flags: _flags,
   isAdmin,
   showToast,
 }: GroupTabData) {
@@ -140,7 +141,13 @@ export default function GroupTab({
     }
   };
 
-  const flag = (team: string) => flags[team] || "🏳";
+  const getFlagUrl = (team: string): string => {
+    const code = TEAM_CODES[team];
+    return code ? `/flags/${code}.png` : "/flags/xx.png";
+  };
+  const flag = (team: string) => (
+    <img src={getFlagUrl(team)} alt={team} className="team-flag" />
+  );
 
   return (
     <div className="groups-grid">
