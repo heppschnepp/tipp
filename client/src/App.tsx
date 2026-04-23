@@ -1,49 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { api, setToken, getToken, clearToken } from "./api";
+import { User, Groups, Flags, Predictions, Results, LeaderboardEntry, KnockoutRound } from "./types";
 import { Tabs } from "./components/Tabs";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import GroupTab from "./components/GroupTab";
 import KnockoutTab from "./components/KnockoutTab";
 import LeaderboardTab from "./components/LeaderboardTab";
 import UserTab from "./components/UserTab";
 
-export const prohibited = "🚫";
+// Remove duplicate interface definitions that are now in types.ts
 
-interface User {
-  id: number;
-  username: string;
-  isAdmin: boolean;
-}
-
-interface Groups {
-  [key: string]: { teams: string[]; matches: number[][] };
-}
-
-interface Flags {
-  [key: string]: string;
-}
-
-interface Predictions {
-  [key: string]: { homeScore: number; awayScore: number };
-}
-
-export interface Results {
-  [key: string]: { homeScore: number; awayScore: number };
-}
-
-interface LeaderboardEntry {
-  userId: number;
-  username: string;
-  exact: number;
-  outcome: number;
-  total: number;
-}
-
-export interface KnockoutRound {
-  id: string;
-  name: string;
-  matches: number;
-}
 
 function Login({ onLogin }: { onLogin: (user: User) => void }) {
   const [username, setUsername] = useState("");
@@ -108,14 +75,14 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
 }
 
 function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const [tab, setTab] = useState("groups");
+  const [tab, setTab] = useState<string>("groups");
   const [groups, setGroups] = useState<Groups>({});
   const [flags, setFlags] = useState<Flags>({});
   const [knockout, setKnockout] = useState<KnockoutRound[]>([]);
   const [predictions, setPredictions] = useState<Predictions>({});
   const [results, setResults] = useState<Results>({});
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState<string>("");
   const [users, setUsers] = useState<
     {
       id: number;
@@ -125,11 +92,18 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
       createdAt: string;
     }[]
   >([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
+  const toastRef = React.useRef<number | null>(null);
 
   const showToast = (msg: string) => {
+    if (toastRef.current) {
+      clearTimeout(toastRef.current);
+    }
     setToast(msg);
-    setTimeout(() => setToast(""), 2500);
+    toastRef.current = window.setTimeout(() => {
+      setToast("");
+      toastRef.current = null;
+    }, 2500);
   };
 
   useEffect(() => {
@@ -258,25 +232,27 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            user ? (
-              <Game
-                user={user}
-                onLogout={() => {
-                  clearToken();
-                  setUser(null);
-                }}
-              />
-            ) : (
-              <Login onLogin={setUser} />
-            )
-          }
-        />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              user ? (
+                <Game
+                  user={user}
+                  onLogout={() => {
+                    clearToken();
+                    setUser(null);
+                  }}
+                />
+              ) : (
+                <Login onLogin={setUser} />
+              )
+            }
+          />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

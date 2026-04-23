@@ -1,5 +1,4 @@
-import { LeaderboardEntry } from "../api";
-import { Results } from "../App";
+import { LeaderboardEntry, Results } from "../types";
 
 interface LeaderboardTabData {
   results: Results;
@@ -17,6 +16,7 @@ export default function LeaderboardTab({
     (acc, p) => acc + p.exact + p.outcome,
     0,
   );
+  const totalMatches = 48 + 48 + 8; // group stage + knockout round of 16 + finals
 
   return (
     <>
@@ -24,7 +24,7 @@ export default function LeaderboardTab({
         <div className="stat-card">
           <div className="stat-label">Results entered</div>
           <div className="stat-value">{totalRes}</div>
-          <div className="stat-sub">out of 104 matches</div>
+          <div className="stat-sub">out of {totalMatches} matches</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Total predictions</div>

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { api, Predictions } from "../api";
-import { KnockoutRound, prohibited, Results } from "../App";
+import { KnockoutRound, Results, parseScore, MAX_SCORE, PROHIBITED } from "../types";
 
 interface KnockoutTabData {
   isAdmin: boolean;
@@ -19,7 +20,11 @@ export default function KnockoutTab({
   showToast,
 }: KnockoutTabData) {
   const scores = isAdmin ? results : predictions;
+  const [saving, setSaving] = useState<boolean>(false);
+
   const setScore = async (key: string, h: number | "", a: number | "") => {
+    if (h === "" && a === "") return;
+    setSaving(true);
     try {
       await api.predictions.save(key, h, a);
       setPredictions((prev) => ({
@@ -27,8 +32,10 @@ export default function KnockoutTab({
         [key]: { homeScore: h as number, awayScore: a as number },
       }));
       showToast("Prediction saved");
-    } catch (err) {
+    } catch {
       showToast("Failed to save");
+    } finally {
+      setSaving(false);
     }
   };
   return (
@@ -55,7 +62,7 @@ export default function KnockoutTab({
                           {homeScore !== undefined ? (
                             homeScore
                           ) : (
-                            <span className="not-started">{prohibited}</span>
+                            <span className="not-started">{PROHIBITED}</span>
                           )}
                         </div>
                       ) : (
@@ -63,15 +70,14 @@ export default function KnockoutTab({
                           <input
                             className="bk-score"
                             type="number"
+                            aria-label={`${key} home score`}
                             min="0"
-                            max="20"
+                            max={MAX_SCORE}
+                            disabled={saving}
                             value={homeScore !== undefined ? homeScore : ""}
                             placeholder="-"
                             onChange={(e) => {
-                              const val =
-                                e.target.value === ""
-                                  ? ""
-                                  : parseInt(e.target.value);
+                              const val = parseScore(e.target.value);
                               setScore(key, val, awayScore);
                             }}
                             onFocus={(e) => e.target.select()}
@@ -97,15 +103,14 @@ export default function KnockoutTab({
                           <input
                             className="bk-score"
                             type="number"
+                            aria-label={`${key} away score`}
                             min="0"
-                            max="20"
+                            max={MAX_SCORE}
+                            disabled={saving}
                             value={awayScore !== undefined ? awayScore : ""}
                             placeholder="-"
                             onChange={(e) => {
-                              const val =
-                                e.target.value === ""
-                                  ? ""
-                                  : parseInt(e.target.value);
+                              const val = parseScore(e.target.value);
                               setScore(key, homeScore, val);
                             }}
                             onFocus={(e) => e.target.select()}

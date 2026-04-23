@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api } from "../api";
+import { MIN_PASSWORD_LENGTH } from "../constants";
 
 interface User {
   id: number;
@@ -24,8 +25,8 @@ export default function UserTab({
   const [newPassword, setNewPassword] = useState("");
 
   const resetPassword = async (userId: number) => {
-    if (!newPassword || newPassword.length < 4) {
-      showToast("Password must be at least 4 characters");
+    if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+      showToast(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
       return;
     }
     try {

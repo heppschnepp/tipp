@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, Flags, Groups, Predictions } from "../api";
-import { prohibited, Results } from "../App";
+import { Results, parseScore, MAX_SCORE, PROHIBITED } from "../types";
 import { TEAM_CODES } from "../data/teamFlags";
 
 interface GroupTabData {
@@ -19,6 +19,7 @@ export default function GroupTab({
   showToast,
 }: GroupTabData) {
   const [predictions, setPredictions] = useState<Predictions>({});
+  const [saving, setSaving] = useState<boolean>(false);
 
   const scores = isAdmin ? results : predictions;
 
@@ -76,6 +77,8 @@ export default function GroupTab({
   };
 
   const setScore = async (key: string, h: number | "", a: number | "") => {
+    if (h === "" && a === "") return;
+    setSaving(true);
     try {
       await api.predictions.save(key, h, a);
       setPredictions((prev) => ({
@@ -83,8 +86,10 @@ export default function GroupTab({
         [key]: { homeScore: h as number, awayScore: a as number },
       }));
       showToast("Prediction saved");
-    } catch (err) {
+    } catch {
       showToast("Failed to save");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -99,18 +104,20 @@ export default function GroupTab({
       if (sc?.homeScore !== undefined && sc?.awayScore !== undefined) {
         return `${sc.homeScore} : ${sc.awayScore}`;
       }
-      return <span className="not-started">{prohibited}</span>;
+      return <span className="not-started">{PROHIBITED}</span>;
     } else {
       return (
         <div className="score-input">
           <input
             type="number"
+            aria-label={`${key} home score`}
             min="0"
-            max="20"
+            max={MAX_SCORE}
+            disabled={saving}
             value={sc.homeScore !== undefined ? sc.homeScore : ""}
             placeholder="-"
             onChange={(e) => {
-              const val = e.target.value === "" ? "" : parseInt(e.target.value);
+              const val = parseScore(e.target.value);
               setScore(
                 key,
                 val,
@@ -122,12 +129,14 @@ export default function GroupTab({
           <span className="score-sep">:</span>
           <input
             type="number"
+            aria-label={`${key} away score`}
             min="0"
-            max="20"
+            max={MAX_SCORE}
+            disabled={saving}
             value={sc.awayScore !== undefined ? sc.awayScore : ""}
             placeholder="-"
             onChange={(e) => {
-              const val = e.target.value === "" ? "" : parseInt(e.target.value);
+              const val = parseScore(e.target.value);
               setScore(
                 key,
                 sc.homeScore !== undefined ? sc.homeScore : "",
