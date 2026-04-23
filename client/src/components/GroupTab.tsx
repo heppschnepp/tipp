@@ -14,7 +14,7 @@ interface GroupTabData {
 export default function GroupTab({
   groups,
   results,
-  flags: _flags,
+  flags: _flags, // eslint-disable-line @typescript-eslint/no-unused-vars
   isAdmin,
   showToast,
 }: GroupTabData) {

@@ -34,8 +34,10 @@ export default function UserTab({
       showToast("Password reset successfully");
       setNewPassword("");
       setSelectedUser(null);
-    } catch (err: any) {
-      showToast(err.message || "Failed to reset password");
+    } catch (err: unknown) {
+      showToast(
+        err instanceof Error ? err.message : "Failed to reset password",
+      );
     }
   };
 

@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { api, setToken, getToken, clearToken } from "./api";
-import { User, Groups, Flags, Predictions, Results, LeaderboardEntry, KnockoutRound } from "./types";
+import {
+  User,
+  Groups,
+  Flags,
+  Predictions,
+  Results,
+  LeaderboardEntry,
+  KnockoutRound,
+} from "./types";
 import { Tabs } from "./components/Tabs";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import GroupTab from "./components/GroupTab";
@@ -10,7 +18,6 @@ import LeaderboardTab from "./components/LeaderboardTab";
 import UserTab from "./components/UserTab";
 
 // Remove duplicate interface definitions that are now in types.ts
-
 
 function Login({ onLogin }: { onLogin: (user: User) => void }) {
   const [username, setUsername] = useState("");
@@ -31,8 +38,8 @@ function Login({ onLogin }: { onLogin: (user: User) => void }) {
         setToken(token);
         onLogin(user);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     }
   };
 
@@ -138,8 +145,8 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
     try {
       const u = await api.admin.users.get();
       setUsers(u);
-    } catch (err: any) {
-      showToast(err.message || "Failed to load users");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to load users");
     } finally {
       setLoadingUsers(false);
     }
