@@ -1,5 +1,49 @@
 {
-	"devDependencies": {
-		"@types/jsonwebtoken": "^9.0.10"
-	}
+  "name": "tipp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "tipp",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"*\" dev",
+    "build": "pnpm --parallel --filter \"*\" build",
+    "test": "pnpm --parallel --filter \"*\" test",
+    "lint": "pnpm --parallel --filter \"*\" lint",
+    "type-check": "pnpm --parallel --filter \"*\" type-check",
+    "clean": "pnpm --recursive clean",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "client:dev": "http://localhost:3000 pnpm --filter client dev",
+    "client:build": "pnpm --filter client build",
+    "client:preview": "pnpm --filter client preview",
+    "server:dev": "pnpm --filter server dev",
+    "server:build": "pnpm --filter server build",
+    "server:start": "pnpm --filter server start",
+    "server:seed": "pnpm --filter server seed",
+    "server:migrate": "pnpm --filter server migrate",
+    "server:type-check": "pnpm --filter server type-check",
+    "server:lint": "pnpm --filter server lint"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/node": "^24.12.2",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^16.5.0",
+    "prettier": "^3.8.3",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.59.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "workspaces": [
+    "client/*",
+    "server/*"
+  ]
 }
