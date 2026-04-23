@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { api, Predictions } from "../api";
-import { KnockoutRound, Results, parseScore, MAX_SCORE, PROHIBITED } from "../types";
+import {
+  KnockoutRound,
+  Results,
+  parseScore,
+  MAX_SCORE,
+  PROHIBITED,
+} from "../types";
 
 interface KnockoutTabData {
   isAdmin: boolean;
@@ -55,8 +61,14 @@ export default function KnockoutTab({
                     <div
                       className={`bk-team ${homeScore > awayScore ? "winner" : ""}`}
                     >
-                      <img src="/flags/xx.png" alt="TBD" className="team-flag" />
-                      <span className="bk-team-name">TBD</span>
+                      <div className="bk-team-info">
+                        <img
+                          src="/flags/xx.png"
+                          alt="TBD"
+                          className="team-flag"
+                        />
+                        <span className="bk-team-name">TBD</span>
+                      </div>
                       {isAdmin ? (
                         <div className="bk-score-display">
                           {homeScore !== undefined ? (
@@ -88,8 +100,14 @@ export default function KnockoutTab({
                     <div
                       className={`bk-team ${awayScore > homeScore ? "winner" : ""}`}
                     >
-                      <img src="/flags/xx.png" alt="TBD" className="team-flag" />
-                      <span className="bk-team-name">TBD</span>
+                      <div className="bk-team-info away">
+                        <span className="bk-team-name">TBD</span>
+                        <img
+                          src="/flags/xx.png"
+                          alt="TBD"
+                          className="team-flag"
+                        />
+                      </div>
                       {isAdmin ? (
                         <div className="bk-score-display">
                           {awayScore !== undefined ? (

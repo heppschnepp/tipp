@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { api, setToken, getToken, clearToken } from "./api";
+import { api, setToken, clearToken } from "./api";
 import {
   User,
   Groups,
@@ -210,25 +210,11 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
+  // No auto-login from localStorage – always start at login screen
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      api.auth
-        .me()
-        .then((u) => {
-          if (u && u.id) {
-            setUser(u as User);
-          } else {
-            clearToken();
-          }
-        })
-        .catch(() => clearToken())
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    setLoading(false);
   }, []);
 
   if (loading) {

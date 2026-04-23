@@ -1,6 +1,6 @@
-import cron from 'node-cron';
-import { getDb, sql } from '../db.js';
-import { wc2026, WC2026Match } from './wc2026.js';
+import cron from "node-cron";
+import { getDb, sql } from "../db.js";
+import { wc2026, WC2026Match } from "./wc2026.js";
 
 export class ResultScheduler {
   private isRunning: boolean = false;
@@ -9,16 +9,20 @@ export class ResultScheduler {
 
   start() {
     if (!process.env.WC2026_API_KEY) {
-      console.warn('[Scheduler] WC2026_API_KEY not set. Automatic result fetching is DISABLED.');
+      console.warn(
+        "[Scheduler] WC2026_API_KEY not set. Automatic result fetching is DISABLED.",
+      );
       return;
     }
 
-    console.log('Starting result scheduler (auto-fetch from WC2026 API every 15 min)...');
-    
+    console.log(
+      "Starting result scheduler (auto-fetch from WC2026 API every 15 min)...",
+    );
+
     // Run every 15 minutes
-    cron.schedule('*/15 * * * *', async () => {
+    cron.schedule("*/15 * * * *", async () => {
       if (this.isRunning) {
-        console.log('Scheduler: Previous run still in progress, skipping...');
+        console.log("Scheduler: Previous run still in progress, skipping...");
         return;
       }
       await this.fetchAndUpdateResults();
@@ -50,30 +54,36 @@ export class ResultScheduler {
         }
 
         const matchKey = this.mapMatchKey(match);
-        
+
         // Check if already exists with same scores (avoid redundant updates)
         const checkReq = db.request();
-        checkReq.input('matchKey', sql.VarChar, matchKey);
+        checkReq.input("matchKey", sql.VarChar, matchKey);
         const existing = await checkReq.query(
-          'SELECT HomeScore, AwayScore FROM tipp_MatchResults WHERE MatchKey = @matchKey'
+          "SELECT HomeScore, AwayScore FROM tipp_MatchResults WHERE MatchKey = @matchKey",
         );
 
         const existingRow = existing.recordset[0];
-        if (existingRow && 
-            existingRow.HomeScore === match.home_score && 
-            existingRow.AwayScore === match.away_score) {
+        if (
+          existingRow &&
+          existingRow.HomeScore === match.home_score &&
+          existingRow.AwayScore === match.away_score
+        ) {
           skipped++;
           continue;
         }
 
         // Insert or update result
         const req = db.request();
-        req.input('matchKey', sql.VarChar, matchKey);
-        req.input('homeScore', sql.Int, match.home_score);
-        req.input('awayScore', sql.Int, match.away_score);
-        req.input('isKnockout', sql.Int, match.round !== 'group' ? 1 : 0);
-        req.input('roundName', sql.VarChar, match.round === 'group' ? null : match.round);
-        
+        req.input("matchKey", sql.VarChar, matchKey);
+        req.input("homeScore", sql.Int, match.home_score);
+        req.input("awayScore", sql.Int, match.away_score);
+        req.input("isKnockout", sql.Int, match.round !== "group" ? 1 : 0);
+        req.input(
+          "roundName",
+          sql.VarChar,
+          match.round === "group" ? null : match.round,
+        );
+
         await req.query(`
           MERGE INTO tipp_MatchResults AS target
           USING (SELECT @matchKey AS MatchKey) AS source
@@ -89,11 +99,13 @@ export class ResultScheduler {
       }
 
       this.lastRun = new Date();
-      console.log(`[Scheduler] Updated ${updated} matches, skipped ${skipped} (no scores or unchanged)`);
-      
-    } catch (err: any) {
-      this.lastError = err.message;
-      console.error('[Scheduler] Error fetching results:', err);
+      console.log(
+        `[Scheduler] Updated ${updated} matches, skipped ${skipped} (no scores or unchanged)`,
+      );
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.lastError = error.message;
+      console.error("[Scheduler] Error fetching results:", error);
     } finally {
       this.isRunning = false;
     }
@@ -101,22 +113,29 @@ export class ResultScheduler {
 
   private mapMatchKey(match: WC2026Match): string {
     // Group stage: e.g., gA0, gA1, ... gL5
-    if (match.round === 'group' && match.group_name) {
+    if (match.round === "group" && match.group_name) {
       const groupIndex = match.group_name.charCodeAt(0) - 65; // A=0, B=1, ...
       const globalIdx = match.match_number - 1; // API match_number is 1-based
-      const localIdx = globalIdx - (groupIndex * 6);
-      return `g${match.group_name}${localIdx}`;
+      const localIdx = globalIdx - groupIndex * 6;
+      return `g${match.group_name}m${localIdx}`;
     }
 
     // Knockout stage: e.g., ko_r32_0, ko_r16_0, ...
-    const roundOrder = ['Round of 32', 'Round of 16', 'Quarter-finals', 'Semi-finals', '3rd Place', 'Final'];
+    const roundOrder = [
+      "Round of 32",
+      "Round of 16",
+      "Quarter-finals",
+      "Semi-finals",
+      "3rd Place",
+      "Final",
+    ];
     const roundIdMap: Record<string, string> = {
-      'Round of 32': 'r32',
-      'Round of 16': 'r16',
-      'Quarter-finals': 'qf',
-      'Semi-finals': 'sf',
-      '3rd Place': '3rd',
-      'Final': 'f',
+      "Round of 32": "r32",
+      "Round of 16": "r16",
+      "Quarter-finals": "qf",
+      "Semi-finals": "sf",
+      "3rd Place": "3rd",
+      Final: "f",
     };
 
     const roundIdx = roundOrder.indexOf(match.round);
