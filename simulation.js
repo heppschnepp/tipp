@@ -9,70 +9,61 @@ const players = [
   "Henry",
   "Ivy",
   "Jack",
-]; // >5 players
+  "Kara",
+  "Liam",
+];
 
 function simulateMatch(p1, p2) {
   return Math.random() < 0.5 ? p1 : p2;
 }
+
 function simulateTournament(players) {
   let round = 1,
-    current = players.map((p) => ({ player: p, eliminatedRound: null })),
-    history = [];
+    current = players.map((p) => ({ player: p, eliminatedRound: null }));
+
   while (current.length > 1) {
     const next = [];
-    if (current.length % 2 === 1) {
-      const byePlayer = current.pop();
-      next.push(byePlayer);
-    }
-    for (let i = 0; i < current.length; i += 2) {
-      const p1 = current[i],
-        p2 = current[i + 1],
-        winner = simulateMatch(p1.player, p2.player);
-      const loser = winner === p1.player ? p2 : p1;
-      loser.eliminatedRound = round;
+    if (current.length === 2) {
+      const p1 = current[0],
+        p2 = current[1];
+      const guess1 = Math.random() < 0.5 ? "opponent" : "self";
+      const guess2 = Math.random() < 0.5 ? "opponent" : "self";
+      const guessedP1 = guess2 === p1.player;
+      const guessedP2 = guess1 === p2.player;
+      let winner;
+      if (guessedP1 && !guessedP2) winner = p1;
+      else if (guessedP2 && !guessedP1) winner = p2;
+      else winner = simulateMatch(p1.player, p2.player);
       next.push({ player: winner, eliminatedRound: null });
+      next.push({
+        player: winner === p1.player ? p2 : p1,
+        eliminatedRound: null,
+      });
+    } else {
+      if (current.length % 2 === 1) next.push(current.pop());
+      for (let i = 0; i < current.length; i += 2)
+        next.push({
+          player: simulateMatch(current[i].player, current[i + 1].player),
+          eliminatedRound: null,
+        });
     }
-    history.push({ round, matches: current.map((c) => c.player) });
     current = next;
     round++;
   }
-  current[0].eliminatedRound = null;
-  const eliminatedMap = {};
-  history.forEach((r) =>
-    r.matches.forEach((m) => {
-      if (!eliminatedMap[m]) eliminatedMap[m] = r.round;
-    }),
-  );
-  eliminatedMap[current[0].player] = null;
-  const ranked = Object.keys(eliminatedMap).map((p) => ({
-    player: p,
-    eliminatedRound: eliminatedMap[p],
-  }));
-  ranked.sort((a, b) => {
-    const ar = a.eliminatedRound === null ? Infinity : a.eliminatedRound;
-    const br = b.eliminatedRound === null ? Infinity : b.eliminatedRound;
-    return ar !== br ? br - ar : a.player.localeCompare(b.player);
-  });
-  const placement = [];
-  let prevRound,
-    place = 0;
-  ranked.forEach((r, i) => {
-    if (i === 0 || r.eliminatedRound !== prevRound) place = i + 1;
-    placement.push({
-      player: r.player,
-      eliminatedRound: r.eliminatedRound,
-      place,
-    });
-    prevRound = r.eliminatedRound;
-  });
-  return { champion: current[0].player, placement };
+
+  return {
+    champion: current[0]?.player || "Unknown",
+    placement: current.map((p) => ({
+      player: p.player,
+      eliminatedRound: null,
+      place: 1,
+    })),
+  };
 }
 
 const result = simulateTournament(players);
 console.log("Champion:", result.champion);
-console.log("\nRanking (place: player [eliminated round]):");
+console.log("\nFinal Placement:");
 result.placement.forEach((p) =>
-  console.log(
-    `${p.place}: ${p.player} (${p.eliminatedRound === null ? "W" : `R${p.eliminatedRound}`})`,
-  ),
+  console.log(`${p.place}: ${p.player} (never eliminated)`),
 );
