@@ -304,8 +304,16 @@ app.post(
       const request = db.request();
       request.input("userId", sql.Int, userId);
       request.input("matchKey", sql.VarChar, matchKey);
-      request.input("homeScore", sql.Int, homeScore === "" ? null : homeScore);
-      request.input("awayScore", sql.Int, awayScore === "" ? null : awayScore);
+      request.input(
+        "homeScore",
+        sql.Int,
+        homeScore === "" || homeScore == null ? 0 : homeScore,
+      );
+      request.input(
+        "awayScore",
+        sql.Int,
+        awayScore === "" || awayScore == null ? 0 : awayScore,
+      );
       await request.query(
         `MERGE INTO tipp_Predictions AS target
        USING (SELECT @userId AS UserId, @matchKey AS MatchKey) AS source
