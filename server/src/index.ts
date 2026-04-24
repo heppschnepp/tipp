@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import { getDb, initDatabase, sql } from "./db.js";
 import { resultScheduler } from "./services/scheduler.js";
 import { seedDatabase } from "./services/seed.js";
+import { simulator } from "./services/simulation.js";
 import type { Request, Response } from "express";
 
 dotenv.config();
@@ -763,6 +764,105 @@ app.post(
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to seed data" });
+    }
+  },
+);
+
+// ==================== SIMULATION ====================
+
+app.post(
+  "/api/admin/simulate",
+  authMiddleware,
+  adminMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { playerCount } = req.body;
+      const count = playerCount && playerCount > 0 ? parseInt(playerCount) : 6;
+
+      const result = await simulator.runFullSimulation(count);
+
+      res.json({
+        success: true,
+        message: `Simulation completed with ${count} players`,
+        data: {
+          playerCount: count,
+          players: result.players.map((p) => ({
+            userId: p.userId,
+            username: p.username,
+          })),
+          predictionsMade: result.predictionsMade,
+          resultsGenerated: result.resultsGenerated,
+          matchKeys: simulator.getMatchKeys().length,
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to run simulation" });
+    }
+  },
+);
+
+app.post(
+  "/api/admin/cleanup-simulation",
+  authMiddleware,
+  adminMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const result = await simulator.cleanupSimulationData();
+
+      res.json({
+        success: true,
+        message: "Simulation data cleaned up",
+        data: {
+          usersDeleted: result.usersDeleted,
+          predictionsDeleted: result.predictionsDeleted,
+          resultsDeleted: result.resultsDeleted,
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to cleanup simulation data" });
+    }
+  },
+);
+
+app.get(
+  "/api/admin/simulate/status",
+  authMiddleware,
+  adminMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const db = await getDb();
+
+      const usersResult = await db.query<{ cnt: number }>(
+        "SELECT COUNT(*) as cnt FROM tipp_Users WHERE Username LIKE 'player%'",
+      );
+      const predictionsResult = await db.query<{ cnt: number }>(
+        "SELECT COUNT(*) as cnt FROM tipp_Predictions",
+      );
+      const resultsResult = await db.query<{
+        cnt: number;
+        withScores: number;
+      }>(`
+        SELECT COUNT(*) as cnt, 
+               SUM(CASE WHEN HomeScore IS NOT NULL AND AwayScore IS NOT NULL THEN 1 ELSE 0 END) as withScores
+        FROM tipp_MatchResults
+      `);
+
+      res.json({
+        simulatedPlayers: usersResult.recordset[0].cnt,
+        totalPredictions: predictionsResult.recordset[0].cnt,
+        matchResults: {
+          total: resultsResult.recordset[0].cnt,
+          withScores: resultsResult.recordset[0].withScores,
+        },
+        players: simulator
+          .getPlayers()
+          .map((p) => ({ userId: p.userId, username: p.username })),
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to get simulation status" });
     }
   },
 );
