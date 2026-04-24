@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api, Predictions } from "../api";
 import {
   KnockoutRound,
@@ -12,7 +12,6 @@ interface KnockoutTabData {
   isAdmin: boolean;
   results: Results;
   predictions: Predictions;
-  setPredictions: React.Dispatch<React.SetStateAction<Predictions>>;
   knockout: KnockoutRound[];
   showToast: (msg: string) => void;
 }
@@ -21,19 +20,25 @@ export default function KnockoutTab({
   isAdmin,
   results,
   predictions,
-  setPredictions,
   knockout,
   showToast,
 }: KnockoutTabData) {
-  const scores = isAdmin ? results : predictions;
+  const [localPredictions, setLocalPredictions] =
+    useState<Predictions>(predictions);
+  const scores = isAdmin ? results : localPredictions;
   const [saving, setSaving] = useState<boolean>(false);
+
+  // Update local predictions when props change
+  useEffect(() => {
+    setLocalPredictions(predictions);
+  }, [predictions]);
 
   const setScore = async (key: string, h: number | "", a: number | "") => {
     if (h === "" && a === "") return;
     setSaving(true);
     try {
       await api.predictions.save(key, h, a);
-      setPredictions((prev) => ({
+      setLocalPredictions((prev) => ({
         ...prev,
         [key]: { homeScore: h as number, awayScore: a as number },
       }));
@@ -44,6 +49,7 @@ export default function KnockoutTab({
       setSaving(false);
     }
   };
+
   return (
     <div className="knockout-section">
       <div className="bracket">
@@ -54,6 +60,13 @@ export default function KnockoutTab({
               {Array.from({ length: r.matches }).map((_, i) => {
                 const key = `ko_${r.id}_${i}`;
                 const sc = scores[key] || {};
+                const result = results[key]; // Actual match results
+
+                // Check if match is finished (has results)
+                const isMatchFinished =
+                  result?.homeScore !== undefined &&
+                  result?.awayScore !== undefined;
+
                 const homeScore = sc?.homeScore;
                 const awayScore = sc?.awayScore;
                 return (
@@ -72,7 +85,7 @@ export default function KnockoutTab({
                       {isAdmin ? (
                         <div className="bk-score-display">
                           {homeScore !== undefined ? (
-                            homeScore
+                            <span>{homeScore}</span>
                           ) : (
                             <span className="not-started">{PROHIBITED}</span>
                           )}
@@ -85,15 +98,23 @@ export default function KnockoutTab({
                             aria-label={`${key} home score`}
                             min="0"
                             max={MAX_SCORE}
-                            disabled={saving}
+                            disabled={saving || isMatchFinished}
                             value={homeScore !== undefined ? homeScore : ""}
                             placeholder="-"
                             onChange={(e) => {
+                              // Don't allow changes if match is finished
+                              if (isMatchFinished) return;
                               const val = parseScore(e.target.value);
                               setScore(key, val, awayScore);
                             }}
                             onFocus={(e) => e.target.select()}
                           />
+                          {isMatchFinished && (
+                            <span className="match-finished">
+                              (Match finished: {result?.homeScore} :{" "}
+                              {result?.awayScore})
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -111,7 +132,7 @@ export default function KnockoutTab({
                       {isAdmin ? (
                         <div className="bk-score-display">
                           {awayScore !== undefined ? (
-                            awayScore
+                            <span>{awayScore}</span>
                           ) : (
                             <span className="not-started">Not started</span>
                           )}
@@ -124,15 +145,23 @@ export default function KnockoutTab({
                             aria-label={`${key} away score`}
                             min="0"
                             max={MAX_SCORE}
-                            disabled={saving}
+                            disabled={saving || isMatchFinished}
                             value={awayScore !== undefined ? awayScore : ""}
                             placeholder="-"
                             onChange={(e) => {
+                              // Don't allow changes if match is finished
+                              if (isMatchFinished) return;
                               const val = parseScore(e.target.value);
                               setScore(key, homeScore, val);
                             }}
                             onFocus={(e) => e.target.select()}
                           />
+                          {isMatchFinished && (
+                            <span className="match-finished">
+                              (Match finished: {result?.homeScore} :{" "}
+                              {result?.awayScore})
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>

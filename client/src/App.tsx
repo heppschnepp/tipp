@@ -178,6 +178,7 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
             groups={groups}
             results={results}
             flags={flags}
+            predictions={predictions}
             isAdmin={isAdmin}
             showToast={showToast}
           />
@@ -187,7 +188,6 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
             isAdmin={isAdmin}
             results={results}
             predictions={predictions}
-            setPredictions={setPredictions}
             knockout={knockout}
             showToast={showToast}
           />

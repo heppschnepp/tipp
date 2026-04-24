@@ -12,8 +12,8 @@ export default function LeaderboardTab({
   const totalRes = Object.keys(results).filter(
     (k) => results[k]?.homeScore !== undefined,
   ).length;
-  const totalPred = leaderboard.reduce(
-    (acc, p) => acc + p.exact + p.outcome,
+  const totalPredictions = leaderboard.reduce(
+    (acc, p) => acc + p.predictionCount,
     0,
   );
   const totalMatches = 48 + 48 + 8; // group stage + knockout round of 16 + finals
@@ -28,7 +28,7 @@ export default function LeaderboardTab({
         </div>
         <div className="stat-card">
           <div className="stat-label">Total predictions</div>
-          <div className="stat-value">{totalPred}</div>
+          <div className="stat-value">{totalPredictions}</div>
           <div className="stat-sub">across all players</div>
         </div>
       </div>
@@ -42,6 +42,7 @@ export default function LeaderboardTab({
             <tr>
               <th>#</th>
               <th>Player</th>
+              <th>Predictions</th>
               <th>Points</th>
               <th>Breakdown</th>
             </tr>
@@ -54,6 +55,9 @@ export default function LeaderboardTab({
                 </td>
                 <td>
                   <div className="lb-name">{p.username}</div>
+                </td>
+                <td>
+                  <span className="lb-pred">{p.predictionCount}</span>
                 </td>
                 <td>
                   <span className="lb-pts">{p.total}</span>

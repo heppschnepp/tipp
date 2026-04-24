@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api, Flags, Groups, Predictions } from "../api";
 import { Results, parseScore, MAX_SCORE, PROHIBITED } from "../types";
 import { TEAM_CODES } from "../data/teamFlags";
@@ -7,6 +7,7 @@ interface GroupTabData {
   groups: Groups;
   results: Results;
   flags: Flags;
+  predictions: Predictions;
   isAdmin: boolean;
   showToast: (msg: string) => void;
 }
@@ -17,11 +18,18 @@ export default function GroupTab({
   flags: _flags, // eslint-disable-line @typescript-eslint/no-unused-vars
   isAdmin,
   showToast,
+  predictions,
 }: GroupTabData) {
-  const [predictions, setPredictions] = useState<Predictions>({});
   const [saving, setSaving] = useState<boolean>(false);
+  const [localPredictions, setLocalPredictions] =
+    useState<Predictions>(predictions);
 
-  const scores = isAdmin ? results : predictions;
+  // Update local predictions when props change
+  useEffect(() => {
+    setLocalPredictions(predictions);
+  }, [predictions]);
+
+  const scores = isAdmin ? results : localPredictions;
 
   const groupStandings = (gk: string, scores: Predictions | Results) => {
     const g = groups[gk];
@@ -81,7 +89,7 @@ export default function GroupTab({
     setSaving(true);
     try {
       await api.predictions.save(key, h, a);
-      setPredictions((prev) => ({
+      setLocalPredictions((prev) => ({
         ...prev,
         [key]: { homeScore: h as number, awayScore: a as number },
       }));
@@ -99,6 +107,11 @@ export default function GroupTab({
     isAdminView: boolean,
   ) => {
     const sc = scores[key] || {};
+    const result = results[key]; // Actual match results
+
+    // Check if match is finished (has results)
+    const isMatchFinished =
+      result?.homeScore !== undefined && result?.awayScore !== undefined;
 
     if (isAdminView) {
       if (sc?.homeScore !== undefined && sc?.awayScore !== undefined) {
@@ -106,6 +119,7 @@ export default function GroupTab({
       }
       return <span className="not-started">{PROHIBITED}</span>;
     } else {
+      // For regular users: show predictions, but disable editing if match is finished
       return (
         <div className="score-input">
           <input
@@ -113,10 +127,12 @@ export default function GroupTab({
             aria-label={`${key} home score`}
             min="0"
             max={MAX_SCORE}
-            disabled={saving}
+            disabled={saving || isMatchFinished}
             value={sc.homeScore !== undefined ? sc.homeScore : ""}
             placeholder="-"
             onChange={(e) => {
+              // Don't allow changes if match is finished
+              if (isMatchFinished) return;
               const val = parseScore(e.target.value);
               setScore(
                 key,
@@ -132,10 +148,12 @@ export default function GroupTab({
             aria-label={`${key} away score`}
             min="0"
             max={MAX_SCORE}
-            disabled={saving}
+            disabled={saving || isMatchFinished}
             value={sc.awayScore !== undefined ? sc.awayScore : ""}
             placeholder="-"
             onChange={(e) => {
+              // Don't allow changes if match is finished
+              if (isMatchFinished) return;
               const val = parseScore(e.target.value);
               setScore(
                 key,
@@ -145,6 +163,11 @@ export default function GroupTab({
             }}
             onFocus={(e) => e.target.select()}
           />
+          {isMatchFinished && (
+            <span className="match-finished">
+              (Match finished: {result?.homeScore} : {result?.awayScore})
+            </span>
+          )}
         </div>
       );
     }

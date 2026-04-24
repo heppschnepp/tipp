@@ -31,6 +31,7 @@ export interface LeaderboardEntry {
   exact: number;
   outcome: number;
   total: number;
+  predictionCount: number;
 }
 
 export interface Groups {

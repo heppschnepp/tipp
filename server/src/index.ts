@@ -94,6 +94,7 @@ interface LeaderboardEntry {
   exact: number;
   outcome: number;
   total: number;
+  predictionCount: number;
 }
 
 const app = express();
@@ -466,6 +467,13 @@ app.get("/api/leaderboard", async (req: Request, res: Response) => {
       users[row.Id] = row.Username;
     });
 
+    // Count predictions per user
+    const predictionCountMap: Record<number, number> = {};
+    predictionsResult.recordset.forEach((row) => {
+      predictionCountMap[row.UserId] =
+        (predictionCountMap[row.UserId] || 0) + 1;
+    });
+
     const leaderboard: LeaderboardEntry[] = usersResult.recordset.map((row) => {
       let exact = 0,
         outcome = 0,
@@ -488,7 +496,14 @@ app.get("/api/leaderboard", async (req: Request, res: Response) => {
         }
       });
 
-      return { userId: row.Id, username: users[row.Id], exact, outcome, total };
+      return {
+        userId: row.Id,
+        username: users[row.Id],
+        exact,
+        outcome,
+        total,
+        predictionCount: predictionCountMap[row.Id] || 0,
+      };
     });
 
     leaderboard.sort((a, b) => b.total - a.total);
