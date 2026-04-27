@@ -309,6 +309,8 @@ main {
   vertical-align: middle;
   margin-right: 6px;
   border-radius: 2px;
+  border: 1px solid;
+  border-color: black;
 }
 .standings .team-name {
   font-weight: 500;
