@@ -118,6 +118,18 @@ curl http://localhost:3001/api/results/status \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
+### PDF Export
+
+PDF generation is handled server-side. The endpoint builds a PDF with group stage tables and knockout brackets, embedding flag images directly from the server's filesystem.
+
+- **Endpoint**: `GET /api/export-pdf` (auth required)
+- **Response**: `application/pdf` attachment, filename includes current date
+- **Flags**: The server reads flag PNGs from `server/public/flags` (mounted/copied there). In Docker, ensure the server container has access to the flag images (see Docker notes below).
+
+**Docker note**: PDF export requires flag images available to the server. In the provided Docker setup, the flags are not mounted by default. If you need PDF export in Docker, either:
+- Copy flags into the server image (adjust Dockerfile), or
+- Mount a shared volume from client `public/flags` into the server container at the expected path
+
 Response:
 ```json
 {
@@ -155,16 +167,18 @@ This is idempotent – safe to run multiple times. It only inserts missing teams
 | Method | Endpoint | Auth | Description |
 |--------|---------|------|-------------|
 | POST | /api/auth/register | No | Register new user |
-| POST | /api/auth/login | No | Login |
-| GET | /api/auth/me | Yes | Get current user |
+| POST | /api/auth/login | No | Login, returns JWT token |
+| GET | /api/auth/me | Yes | Get current user info |
 | GET | /api/predictions | Yes | Get user's predictions |
-| POST | /api/predictions | Yes | Save prediction |
+| POST | /api/predictions | Yes | Save/update prediction |
+| DELETE | /api/predictions/:matchKey | Yes | Clear a prediction |
 | GET | /api/results | No | Get match results (scores from WC2026 API) |
 | GET | /api/results/status | Admin | Check automatic fetch status |
-| POST | /api/results | Admin | **DISABLED** – automatic fetching only |
-| GET | /api/leaderboard | No | Get rankings |
-| GET | /api/groups | No | Get group data |
-| GET | /api/flags | No | Get team flags |
+| GET | /api/leaderboard | No | Get rankings with points |
+| GET | /api/groups | No | Get group stage teams and structure |
+| GET | /api/knockout | No | Get knockout bracket structure |
+| GET | /api/team-codes | No | Get team name → flag code mapping (for UI) |
+| GET | /api/export-pdf | Yes | Download PDF of all matches & predictions |
 
 ## Common Issues
 
