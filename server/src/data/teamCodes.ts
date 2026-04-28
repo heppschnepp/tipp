@@ -49,3 +49,8 @@ export const TEAM_CODES: Record<string, string> = {
   'Panama': 'pa',
   'TBD': 'xx',
 };
+
+export const getFlagFilename = (team: string): string => {
+  const code = TEAM_CODES[team];
+  return code ? `${code}.png` : 'xx.png';
+};

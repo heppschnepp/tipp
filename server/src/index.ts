@@ -7,6 +7,8 @@ import { getDb, initDatabase, sql } from "./db.js";
 import { resultScheduler } from "./services/scheduler.js";
 import { seedDatabase } from "./services/seed.js";
 import { simulator } from "./services/simulation.js";
+import { generatePdf } from "./services/pdfExport.js";
+import { TEAM_CODES } from "./data/teamCodes.js";
 import type { Request, Response } from "express";
 
 dotenv.config();
@@ -706,10 +708,138 @@ app.get("/api/knockout", async (req: Request, res: Response) => {
   } catch (err) {
     console.error("Knockout error:", err);
     res.status(500).json({ error: "Failed to get knockout rounds" });
-  }
-});
+   }
+ });
 
-// ==================== USER MANAGEMENT ====================
+ // ==================== TEAM CODES ====================
+
+ app.get('/api/team-codes', async (req: Request, res: Response) => {
+   res.json(TEAM_CODES);
+ });
+
+ // ==================== PDF EXPORT ====================
+
+ app.get('/api/export-pdf', authMiddleware, async (req: AuthRequest, res: Response) => {
+   try {
+     const db = await getDb();
+     
+     // ---------- Build groups ----------
+     const groupsResult = await db.query<GroupNameRow>(
+       `SELECT DISTINCT GroupName FROM tipp_Teams WHERE GroupName IS NOT NULL ORDER BY GroupName`,
+     );
+
+     const GROUPS: Record<string, { teams: string[]; matches: number[][] }> = {};
+
+     for (const row of groupsResult.recordset) {
+       const groupName = row.GroupName;
+
+       const teamsReq = db.request();
+       teamsReq.input('group', sql.VarChar, groupName);
+       const teamsResult = await teamsReq.query<{ Name: string }>(
+         'SELECT Name FROM tipp_Teams WHERE GroupName = @group ORDER BY Id',
+       );
+       const teamNames = teamsResult.recordset.map(r => r.Name);
+
+       const matchesReq = db.request();
+       matchesReq.input('group', sql.VarChar, groupName);
+       const matchesResult = await matchesReq.query<{ MatchOrder: number }>(
+         `SELECT DISTINCT MatchOrder FROM tipp_Matches 
+          WHERE GroupName = @group AND MatchType = 'group'
+          ORDER BY MatchOrder`,
+       );
+       const matchOrders = matchesResult.recordset.map(r => r.MatchOrder);
+
+       const matchPairs: Record<number, number[]> = {
+         0: [0, 1],
+         1: [2, 3],
+         2: [0, 2],
+         3: [1, 3],
+         4: [0, 3],
+         5: [1, 2],
+       };
+
+       const uniquePairs = [
+         ...new Set(
+           matchOrders.map(o => JSON.stringify(matchPairs[o])),
+         ),
+       ].map(item => JSON.parse(item));
+       GROUPS[groupName] = { teams: teamNames, matches: uniquePairs };
+     }
+
+     // ---------- Build knockout ----------
+     const knockoutResult = await db.query<KnockoutRoundRow>(`
+       SELECT DISTINCT RoundName,
+         CASE RoundName 
+           WHEN 'Round of 32' THEN 1 
+           WHEN 'Round of 16' THEN 2 
+           WHEN 'Quarter-finals' THEN 3 
+           WHEN 'Semi-finals' THEN 4 
+           WHEN '3rd Place' THEN 5 
+           WHEN 'Final' THEN 6 
+         END AS OrderIdx
+       FROM tipp_Matches WHERE MatchType = 'knockout' AND RoundName IS NOT NULL ORDER BY OrderIdx
+     `);
+
+     const knockout = knockoutResult.recordset.map((row) => {
+       const name = row.RoundName;
+       let matches = 1;
+       if (name === 'Round of 32') matches = 16;
+       else if (name === 'Round of 16') matches = 8;
+       else if (name === 'Quarter-finals') matches = 4;
+       else if (name === 'Semi-finals') matches = 2;
+
+       let id = 'f';
+       if (name === 'Round of 32') id = 'r32';
+       else if (name === 'Round of 16') id = 'r16';
+       else if (name === 'Quarter-finals') id = 'qf';
+       else if (name === 'Semi-finals') id = 'sf';
+       else if (name === '3rd Place') id = '3rd';
+
+       return { id, name, matches };
+     });
+
+     // ---------- Build scores (predictions or results) ----------
+     const scoresMap: Record<string, { homeScore: number | null; awayScore: number | null }> = {};
+
+     if (req.user!.isAdmin) {
+       const resultsResult = await db.query<MatchResultRecord>(
+         'SELECT MatchKey, HomeScore, AwayScore FROM tipp_MatchResults',
+       );
+       resultsResult.recordset.forEach(row => {
+         scoresMap[row.MatchKey] = {
+           homeScore: row.HomeScore,
+           awayScore: row.AwayScore,
+         };
+       });
+      } else {
+        const request = db.request();
+        request.input('userId', sql.Int, req.user!.userId);
+        const predictionsResult = await request.query<PredictionRow>(
+          'SELECT MatchKey, HomeScore, AwayScore FROM tipp_Predictions WHERE UserId = @userId',
+        );
+        predictionsResult.recordset.forEach(row => {
+          scoresMap[row.MatchKey] = {
+            homeScore: row.HomeScore,
+            awayScore: row.AwayScore,
+          };
+        });
+      }
+
+      // ---------- Generate PDF ----------
+      const pdfBuffer = await generatePdf(GROUPS, knockout, scoresMap);
+
+     res.setHeader('Content-Type', 'application/pdf');
+     const dateStr = new Date().toISOString().split('T')[0];
+     res.setHeader('Content-Disposition', `attachment; filename="worldcup2026_matches_${dateStr}.pdf"`);
+     res.send(pdfBuffer);
+   } catch (error) {
+     console.error('PDF export error:', error);
+     res.status(500).json({ error: 'Failed to generate PDF' });
+   }
+ });
+
+ // ==================== USER MANAGEMENT ====================
+
 
 app.get(
   "/api/admin/users",

@@ -1,21 +1,78 @@
 import { useState, useEffect } from "react";
-import { api, Flags, Groups, Predictions } from "../api";
-import { Results, parseScore, MAX_SCORE, PROHIBITED } from "../types";
-import { TEAM_CODES } from "../data/teamFlags";
+import { api, Groups, Predictions } from "../api";
+import {
+  Results,
+  parseScore,
+  MAX_SCORE,
+  PROHIBITED,
+} from "../types";
+
+const groupStandings = (gk: string, groups: Groups, scores: Predictions | Results) => {
+  const g = groups[gk];
+  if (!g) return [];
+  const teams = g.teams.map((t) => ({
+    name: t,
+    pts: 0,
+    gf: 0,
+    ga: 0,
+    gd: 0,
+    played: 0,
+    w: 0,
+    d: 0,
+    l: 0,
+  }));
+  g.matches.forEach((m, i) => {
+    const key = `g${gk}m${i}`;
+    const sc = scores[key];
+    if (sc && sc.homeScore !== undefined && sc.awayScore !== undefined) {
+      const h = sc.homeScore;
+      const a = sc.awayScore;
+      teams[m[0]].gf += h;
+      teams[m[0]].ga += a;
+      teams[m[1]].gf += a;
+      teams[m[1]].ga += h;
+      teams[m[0]].played++;
+      teams[m[1]].played++;
+      if (h > a) {
+        teams[m[0]].pts += 3;
+        teams[m[0]].w++;
+        teams[m[1]].l++;
+      } else if (h < a) {
+        teams[m[1]].pts += 3;
+        teams[m[1]].w++;
+        teams[m[0]].l++;
+      } else {
+        teams[m[0]].pts++;
+        teams[m[0]].d++;
+        teams[m[1]].pts++;
+        teams[m[1]].d++;
+      }
+    }
+  });
+  teams.forEach((t) => (t.gd = t.gf - t.ga));
+  teams.sort(
+    (a, b) =>
+      b.pts - a.pts ||
+      b.gd - a.gd ||
+      b.gf - a.gf ||
+      a.name.localeCompare(b.name),
+  );
+  return teams;
+};
 
 interface GroupTabData {
   groups: Groups;
   results: Results;
-  flags: Flags;
-  predictions: Predictions;
+  teamCodes: Record<string, string>;
   isAdmin: boolean;
   showToast: (msg: string) => void;
+  predictions: Predictions;
 }
 
 export default function GroupTab({
   groups,
   results,
-  flags: _flags, // eslint-disable-line @typescript-eslint/no-unused-vars
+  teamCodes,
   isAdmin,
   showToast,
   predictions,
@@ -24,65 +81,11 @@ export default function GroupTab({
   const [localPredictions, setLocalPredictions] =
     useState<Predictions>(predictions);
 
-  // Update local predictions when props change
   useEffect(() => {
     setLocalPredictions(predictions);
   }, [predictions]);
 
   const scores = isAdmin ? results : localPredictions;
-
-  const groupStandings = (gk: string, scores: Predictions | Results) => {
-    const g = groups[gk];
-    if (!g) return [];
-    const teams = g.teams.map((t) => ({
-      name: t,
-      pts: 0,
-      gf: 0,
-      ga: 0,
-      gd: 0,
-      played: 0,
-      w: 0,
-      d: 0,
-      l: 0,
-    }));
-    g.matches.forEach((m, i) => {
-      const key = `g${gk}m${i}`;
-      const sc = scores[key];
-      if (sc && sc.homeScore !== undefined && sc.awayScore !== undefined) {
-        const h = sc.homeScore;
-        const a = sc.awayScore;
-        teams[m[0]].gf += h;
-        teams[m[0]].ga += a;
-        teams[m[1]].gf += a;
-        teams[m[1]].ga += h;
-        teams[m[0]].played++;
-        teams[m[1]].played++;
-        if (h > a) {
-          teams[m[0]].pts += 3;
-          teams[m[0]].w++;
-          teams[m[1]].l++;
-        } else if (h < a) {
-          teams[m[1]].pts += 3;
-          teams[m[1]].w++;
-          teams[m[0]].l++;
-        } else {
-          teams[m[0]].pts++;
-          teams[m[0]].d++;
-          teams[m[1]].pts++;
-          teams[m[1]].d++;
-        }
-      }
-    });
-    teams.forEach((t) => (t.gd = t.gf - t.ga));
-    teams.sort(
-      (a, b) =>
-        b.pts - a.pts ||
-        b.gd - a.gd ||
-        b.gf - a.gf ||
-        a.name.localeCompare(b.name),
-    );
-    return teams;
-  };
 
   const setScore = async (key: string, h: number | "", a: number | "") => {
     if (h === "" && a === "") return;
@@ -101,15 +104,24 @@ export default function GroupTab({
     }
   };
 
+  const getFlagUrl = (team: string): string => {
+    const code = teamCodes[team];
+    return code ? `/flags/${code}.png` : "/flags/xx.png";
+  };
+
+  const flag = (team: string) => {
+    const url = getFlagUrl(team);
+    return <img src={url} alt={team} className="team-flag" />;
+  };
+
   const renderScoreDisplay = (
     key: string,
     scores: Predictions | Results,
     isAdminView: boolean,
   ) => {
     const sc = scores[key] || {};
-    const result = results[key]; // Actual match results
+    const result = results[key];
 
-    // Check if match is finished (has results)
     const isMatchFinished =
       result?.homeScore !== undefined && result?.awayScore !== undefined;
 
@@ -119,7 +131,6 @@ export default function GroupTab({
       }
       return <span className="not-started">{PROHIBITED}</span>;
     } else {
-      // For regular users: show predictions, but disable editing if match is finished
       return (
         <div className="score-input">
           <input
@@ -131,14 +142,9 @@ export default function GroupTab({
             value={sc.homeScore !== undefined ? sc.homeScore : ""}
             placeholder="-"
             onChange={(e) => {
-              // Don't allow changes if match is finished
               if (isMatchFinished) return;
               const val = parseScore(e.target.value);
-              setScore(
-                key,
-                val,
-                sc.awayScore !== undefined ? sc.awayScore : "",
-              );
+              setScore(key, val, sc.awayScore !== undefined ? sc.awayScore : "");
             }}
             onFocus={(e) => e.target.select()}
           />
@@ -152,7 +158,6 @@ export default function GroupTab({
             value={sc.awayScore !== undefined ? sc.awayScore : ""}
             placeholder="-"
             onChange={(e) => {
-              // Don't allow changes if match is finished
               if (isMatchFinished) return;
               const val = parseScore(e.target.value);
               setScore(
@@ -173,19 +178,11 @@ export default function GroupTab({
     }
   };
 
-  const getFlagUrl = (team: string): string => {
-    const code = TEAM_CODES[team];
-    return code ? `/flags/${code}.png` : "/flags/xx.png";
-  };
-  const flag = (team: string) => (
-    <img src={getFlagUrl(team)} alt={team} className="team-flag" />
-  );
-
   return (
     <div className="groups-grid">
       {Object.keys(groups).map((gk) => {
         const g = groups[gk];
-        const standings = groupStandings(gk, scores);
+        const standings = groupStandings(gk, groups, scores);
         return (
           <div key={gk} className="group-card">
             <div className="group-header">

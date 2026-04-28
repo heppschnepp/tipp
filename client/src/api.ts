@@ -134,6 +134,10 @@ export const api = {
     get: () => request<Record<string, string>>("/flags"),
   },
 
+  teamCodes: {
+    get: () => request<Record<string, string>>("/team-codes"),
+  },
+
   knockout: {
     get: () =>
       request<{ id: string; name: string; matches: number }[]>("/knockout"),
