@@ -113,8 +113,10 @@ export async function generatePdf(
   });
   allTeams.add('TBD');
 
-  // Determine flags directory (relative to server process)
-  const FLAGS_DIR = path.resolve(process.cwd(), '..', 'client', 'public', 'flags');
+  // Determine flags directory
+  // Priority: FLAGS_DIR env var, else default to ../client/public/flags (dev) or /app/public/flags (Docker)
+  const defaultFlagsDir = path.resolve(process.cwd(), '..', 'client', 'public', 'flags');
+  const FLAGS_DIR = process.env.FLAGS_DIR || defaultFlagsDir;
 
   // Helper to read flag and convert to base64 data URL
   async function loadFlagDataUrl(team: string): Promise<string> {

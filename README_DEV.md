@@ -24,6 +24,11 @@ Wait ~30 seconds for services to start, then access:
 | server   | 3001 | Express REST API |
 | sqlserver | 1433 | MSSQL Server database |
 
+### Volumes
+
+- `sqlserver_data` — Database persistence
+- `flags_share` — Shared flag images between client and server (mounted at `/app/public/flags` in server)
+
 ## First Run
 
 1. Open http://localhost:5173
@@ -78,10 +83,17 @@ DB_NAME=tipp
 DB_USER=lportal
 DB_PASSWORD=lportal
 JWT_SECRET=your-secret-key
+JWT_EXPIRES_IN=7d
 
 # WC2026 API Configuration (REQUIRED for automatic result fetching)
 # Get your free key from https://wc2026api.com
 WC2026_API_KEY=your_wc2026_api_key_here
+
+# PDF Export: Path to flag image directory (PNG files).
+# Used by server when generating PDFs. Leave unset for default.
+# Default (dev): ../client/public/flags relative to server working dir
+# Default (Docker): /app/public/flags (mounted automatically)
+FLAGS_DIR=/app/public/flags
 ```
 
 **Important**: Without `WC2026_API_KEY`, match results will not be fetched automatically. The server will start but scheduler will be disabled.
@@ -177,7 +189,7 @@ This is idempotent – safe to run multiple times. It only inserts missing teams
 | GET | /api/leaderboard | No | Get rankings with points |
 | GET | /api/groups | No | Get group stage teams and structure |
 | GET | /api/knockout | No | Get knockout bracket structure |
-| GET | /api/team-codes | No | Get team name → flag code mapping (for UI) |
+| GET | /api/team-codes | No | Get team name → flag code mapping |
 | GET | /api/export-pdf | Yes | Download PDF of all matches & predictions |
 
 ## Common Issues

@@ -40,14 +40,8 @@ export interface Groups {
   [key: string]: { teams: string[]; matches: number[][] };
 }
 
-export interface Flags {
+export interface TeamCodes {
   [key: string]: string;
-}
-
-export interface KnockoutRound {
-  id: string;
-  name: string;
-  matches: number;
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -128,10 +122,6 @@ export const api = {
       request<Record<string, { teams: string[]; matches: number[][] }>>(
         "/groups",
       ),
-  },
-
-  flags: {
-    get: () => request<Record<string, string>>("/flags"),
   },
 
   teamCodes: {

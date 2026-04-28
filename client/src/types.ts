@@ -38,14 +38,14 @@ export interface Groups {
   [key: string]: { teams: string[]; matches: number[][] };
 }
 
-export interface Flags {
-  [key: string]: string;
-}
-
 export interface KnockoutRound {
   id: string;
   name: string;
   matches: number;
+}
+
+export interface TeamCodes {
+  [key: string]: string;
 }
 
 export interface GroupStandings {
