@@ -1,0 +1,181 @@
+import { type Request, type Response } from "express";
+import { getDb, sql } from "../db.js";
+import type { GroupNameRow, CountRow } from "../types/db.js";
+
+export interface GroupData {
+  teams: string[];
+  matches: number[][];
+}
+
+export interface Groups {
+  [key: string]: GroupData;
+}
+
+export const getGroups = async (_req: Request, res: Response) => {
+  const db = await getDb();
+
+  const checkTable = await db.query<CountRow>(
+    `SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'tipp_Teams'`,
+  );
+  if (checkTable.recordset[0].cnt === 0) {
+    return res.json({});
+  }
+
+  const groupsResult = await db.query<GroupNameRow>(
+    `SELECT DISTINCT GroupName FROM tipp_Teams WHERE GroupName IS NOT NULL ORDER BY GroupName`,
+  );
+
+  const GROUPS: Groups = {};
+
+  for (const row of groupsResult.recordset) {
+    const groupName = row.GroupName;
+
+    const teamsReq = db.request();
+    teamsReq.input("group", sql.VarChar, groupName);
+    const teamsResult = await teamsReq.query<{ Name: string }>(
+      "SELECT Name FROM tipp_Teams WHERE GroupName = @group ORDER BY Id",
+    );
+    const teamNames = teamsResult.recordset.map((r) => r.Name);
+
+    const matchesReq = db.request();
+    matchesReq.input("group", sql.VarChar, groupName);
+    const matchesResult = await matchesReq.query<{ MatchOrder: number }>(
+      `SELECT DISTINCT MatchOrder FROM tipp_Matches 
+       WHERE GroupName = @group AND MatchType = 'group'
+       ORDER BY MatchOrder`,
+    );
+    const matchOrders = matchesResult.recordset.map((r) => r.MatchOrder);
+
+    const matchPairs: Record<number, number[]> = {
+      0: [0, 1],
+      1: [2, 3],
+      2: [0, 2],
+      3: [1, 3],
+      4: [0, 3],
+      5: [1, 2],
+    };
+
+    const uniquePairs = [
+      ...new Set(matchOrders.map((o) => JSON.stringify(matchPairs[o]))),
+    ].map((item) => JSON.parse(item));
+    GROUPS[groupName] = { teams: teamNames, matches: uniquePairs };
+  }
+
+  res.json(GROUPS);
+};
+
+export const getFlags = async (_req: Request, res: Response) => {
+  const db = await getDb();
+  const checkTable = await db.query<CountRow>(
+    `SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'tipp_Teams'`,
+  );
+  if (checkTable.recordset[0].cnt === 0) {
+    return res.json({ TBD: "❓" });
+  }
+
+  const result = await db.query<{ Name: string; Code: string }>(
+    "SELECT Name, Code FROM tipp_Teams",
+  );
+
+  const FLAG_EMOJI_MAP: Record<string, string> = {
+    MEX: "🇲🇽",
+    RSA: "🇿🇦",
+    KOR: "🇰🇷",
+    CZE: "🇨🇿",
+    CAN: "🇨🇦",
+    BIH: "🇧🇦",
+    QAT: "🇶🇦",
+    SUI: "🇨🇭",
+    BRA: "🇧🇷",
+    MAR: "🇲🇦",
+    HAI: "🇭🇹",
+    SCO: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+    USA: "🇺🇸",
+    PAR: "🇵🇾",
+    AUS: "🇦🇺",
+    TUR: "🇹🇷",
+    GER: "🇩🇪",
+    CUR: "🇨🇼",
+    CIV: "🇨🇮",
+    ECU: "🇪🇨",
+    NED: "🇳🇱",
+    JPN: "🇯🇵",
+    SWE: "🇸🇪",
+    TUN: "🇹🇳",
+    BEL: "🇧🇪",
+    EGY: "🇪🇬",
+    IRN: "🇮🇷",
+    NZL: "🇳🇿",
+    ESP: "🇪🇸",
+    CPV: "🇨🇻",
+    KSA: "🇸🇦",
+    URU: "🇺🇾",
+    FRA: "🇫🇷",
+    SEN: "🇸🇳",
+    IRQ: "🇮🇶",
+    NOR: "🇳🇴",
+    ARG: "🇦🇷",
+    ALG: "🇩🇿",
+    AUT: "🇦🇹",
+    JOR: "🇯🇴",
+    POR: "🇵🇹",
+    COD: "🇨🇩",
+    UZB: "🇺🇿",
+    COL: "🇨🇴",
+    ENG: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    CRO: "🇭🇷",
+    GHA: "🇬🇭",
+    PAN: "🇵🇦",
+    TBD: "❓",
+  };
+
+  const FLAGS: Record<string, string> = {};
+  result.recordset.forEach((row) => {
+    FLAGS[row.Name] = FLAG_EMOJI_MAP[row.Code] || "❓";
+  });
+  FLAGS["TBD"] = "❓";
+  res.json(FLAGS);
+};
+
+export const getKnockoutRounds = async (_req: Request, res: Response) => {
+  const db = await getDb();
+  const checkTable = await db.query<CountRow>(
+    `SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'tipp_Matches'`,
+  );
+  if (checkTable.recordset[0].cnt === 0) {
+    return res.json([]);
+  }
+
+  const result = await db.query<{ RoundName: string; OrderIdx: number }>(`
+    SELECT DISTINCT RoundName,
+      CASE RoundName 
+        WHEN 'Round of 32' THEN 1 
+        WHEN 'Round of 16' THEN 2 
+        WHEN 'Quarter-finals' THEN 3 
+        WHEN 'Semi-finals' THEN 4 
+        WHEN '3rd Place' THEN 5 
+        WHEN 'Final' THEN 6 
+      END AS OrderIdx
+    FROM tipp_Matches WHERE MatchType = 'knockout' AND RoundName IS NOT NULL ORDER BY OrderIdx
+  `);
+
+  const rounds = result.recordset.map((row) => {
+    const name = row.RoundName;
+    let matches = 1;
+    if (name === "Round of 32") matches = 16;
+    else if (name === "Round of 16") matches = 8;
+    else if (name === "Quarter-finals") matches = 4;
+    else if (name === "Semi-finals") matches = 2;
+
+    let id = "f";
+    if (name === "Round of 32") id = "r32";
+    else if (name === "Round of 16") id = "r16";
+    else if (name === "Quarter-finals") id = "qf";
+    else if (name === "Semi-finals") id = "sf";
+    else if (name === "3rd Place") id = "3rd";
+
+    return { id, name, matches };
+  });
+
+  res.json(rounds);
+};
