@@ -74,11 +74,10 @@ export class TournamentSimulator {
         const insertReq = db.request();
         insertReq.input("username", sql.VarChar, username);
         insertReq.input("passwordHash", sql.VarChar, passwordHash);
-        insertReq.input("email", sql.VarChar, `${username}@test.com`);
         insertReq.input("isAdmin", sql.Int, 0);
 
         const result = await insertReq.query<{ Id: number }>(
-          "INSERT INTO tipp_Users (Username, PasswordHash, Email, IsAdmin) OUTPUT INSERTED.Id VALUES (@username, @passwordHash, @email, @isAdmin)",
+          "INSERT INTO tipp_Users (Username, PasswordHash, IsAdmin) OUTPUT INSERTED.Id VALUES (@username, @passwordHash, @isAdmin)",
         );
         userId = result.recordset[0].Id;
       }

@@ -9,7 +9,10 @@ import { seedDatabase } from "./services/seed.js";
 import { simulator } from "./services/simulation.js";
 import { generatePdf } from "./services/pdfExport.js";
 import { TEAM_CODES } from "./data/teamCodes.js";
+import { validate } from "./validation/validate.js";
+import { registerSchema, loginSchema, predictionSchema, resetPasswordSchema, simulationSchema, type RegisterInput, type LoginInput, type PredictionInput, type ResetPasswordInput, type SimulationInput } from "./validation/schemas.js";
 import type { Request, Response } from "express";
+import type { ValidatedRequest } from "./validation/validate.js";
 
 dotenv.config();
 
@@ -36,7 +39,6 @@ interface UserAuthRow {
 interface UserRecord {
   Id: number;
   Username: string;
-  Email: string;
   IsAdmin: boolean;
   CreatedAt: Date;
 }
@@ -138,12 +140,12 @@ function adminMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
 
 // ==================== AUTH ====================
 
-app.post("/api/auth/register", async (req, res) => {
-  try {
-    const { username, password, email } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: "Username and password required" });
-    }
+app.post(
+  "/api/auth/register",
+  validate(registerSchema),
+  async (req: ValidatedRequest< RegisterInput>, res: Response) => {
+    try {
+      const { username, password } = req.validated!;
 
     const db = await getDb();
     let request = db.request();
@@ -164,10 +166,9 @@ app.post("/api/auth/register", async (req, res) => {
     request = db.request();
     request.input("username", sql.VarChar, username);
     request.input("passwordHash", sql.VarChar, passwordHash);
-    request.input("email", sql.VarChar, email || "");
     request.input("isAdmin", sql.Int, isFirstUser ? 1 : 0);
     const result = await request.query<IdRow>(
-      "INSERT INTO tipp_Users (Username, PasswordHash, Email, IsAdmin) OUTPUT INSERTED.Id VALUES (@username, @passwordHash, @email, @isAdmin)",
+      "INSERT INTO tipp_Users (Username, PasswordHash, IsAdmin) OUTPUT INSERTED.Id VALUES (@username, @passwordHash, @isAdmin)",
     );
 
     const userId = result.recordset[0].Id;
@@ -183,12 +184,12 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
-app.post("/api/auth/login", async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ error: "Username and password required" });
-    }
+app.post(
+  "/api/auth/login",
+  validate(loginSchema),
+  async (req: ValidatedRequest<LoginInput>, res: Response) => {
+    try {
+      const { username, password } = req.validated!;
 
     const db = await getDb();
     const request = db.request();
@@ -233,7 +234,7 @@ app.get(
       const request = db.request();
       request.input("id", sql.Int, req.user!.userId);
       const result = await request.query(
-        "SELECT Id, Username, Email, IsAdmin, CreatedAt FROM tipp_Users WHERE Id = @id",
+        "SELECT Id, Username, IsAdmin, CreatedAt FROM tipp_Users WHERE Id = @id",
       );
 
       if (result.recordset.length === 0) {
@@ -245,7 +246,6 @@ app.get(
         user: {
           id: u.Id,
           username: u.Username,
-          email: u.Email,
           isAdmin: !!u.IsAdmin,
           createdAt: u.CreatedAt,
         },
@@ -293,12 +293,10 @@ app.get(
 app.post(
   "/api/predictions",
   authMiddleware,
-  async (req: AuthRequest, res: Response) => {
+  validate(predictionSchema),
+  async (req: ValidatedRequest<PredictionInput> & AuthRequest, res: Response) => {
     try {
-      const { matchKey, homeScore, awayScore } = req.body;
-      if (!matchKey) {
-        return res.status(400).json({ error: "MatchKey required" });
-      }
+      const { matchKey, homeScore, awayScore } = req.validated!;
 
       const db = await getDb();
       const userId = req.user!.userId;
@@ -306,16 +304,8 @@ app.post(
       const request = db.request();
       request.input("userId", sql.Int, userId);
       request.input("matchKey", sql.VarChar, matchKey);
-      request.input(
-        "homeScore",
-        sql.Int,
-        homeScore === "" || homeScore == null ? 0 : homeScore,
-      );
-      request.input(
-        "awayScore",
-        sql.Int,
-        awayScore === "" || awayScore == null ? 0 : awayScore,
-      );
+      request.input("homeScore", sql.Int, homeScore ?? null);
+      request.input("awayScore", sql.Int, awayScore ?? null);
       await request.query(
         `MERGE INTO tipp_Predictions AS target
        USING (SELECT @userId AS UserId, @matchKey AS MatchKey) AS source
@@ -849,12 +839,11 @@ app.get(
     try {
       const db = await getDb();
       const result = await db.query<UserRecord>(
-        "SELECT Id, Username, Email, IsAdmin, CreatedAt FROM tipp_Users ORDER BY Id",
+        "SELECT Id, Username, IsAdmin, CreatedAt FROM tipp_Users ORDER BY Id",
       );
       const users = result.recordset.map((u) => ({
         id: u.Id,
         username: u.Username,
-        email: u.Email,
         isAdmin: !!u.IsAdmin,
         createdAt: u.CreatedAt,
       }));
@@ -870,14 +859,10 @@ app.post(
   "/api/admin/reset-password",
   authMiddleware,
   adminMiddleware,
-  async (req: Request, res: Response) => {
+  validate(resetPasswordSchema),
+  async (req: ValidatedRequest<ResetPasswordInput>, res: Response) => {
     try {
-      const { userId, newPassword } = req.body;
-      if (!userId || !newPassword) {
-        return res
-          .status(400)
-          .json({ error: "User ID and new password required" });
-      }
+      const { userId, newPassword } = req.validated!;
 
       const db = await getDb();
       const passwordHash = await bcrypt.hash(newPassword, 10);
@@ -927,10 +912,10 @@ app.post(
   "/api/admin/simulate",
   authMiddleware,
   adminMiddleware,
-  async (req: Request, res: Response) => {
+  validate(simulationSchema),
+  async (req: ValidatedRequest<SimulationInput>, res: Response) => {
     try {
-      const { playerCount } = req.body;
-      const count = playerCount && playerCount > 0 ? parseInt(playerCount) : 6;
+      const count = req.validated?.playerCount ?? 6;
 
       const result = await simulator.runFullSimulation(count);
 
