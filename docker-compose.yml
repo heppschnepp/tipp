@@ -18,29 +18,30 @@ services:
       timeout: 5s
       retries: 5
 
-   server:
-     build:
-       context: ./server
-       dockerfile: Dockerfile
-     container_name: tipp-server
-     environment:
-       - NODE_ENV=development
-       - PORT=3001
-       - DB_SERVER=sqlserver
-       - DB_PORT=1433
-       - DB_NAME=tipp
-       - DB_USER=lportal
-       - DB_PASSWORD=lportal
-       - JWT_SECRET=your-super-secret-jwt-key-change-in-production
-       - JWT_EXPIRES_IN=7d
-       - FLAGS_DIR=/app/public/flags
-     ports:
-       - "3001:3001"
-     depends on:
-       - sqlserver
-     volumes:
-       - ./client/public/flags:/app/public/flags:ro
-     restart: unless-stopped
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: tipp-server
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DB_SERVER=sqlserver
+      - DB_PORT=1433
+      - DB_NAME=tipp
+      - DB_USER=lportal
+      - DB_PASSWORD=lportal
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - JWT_EXPIRES_IN=7d
+      - FLAGS_DIR=/app/public/flags
+      - WC2026_API_KEY=${WC2026_API_KEY:-}
+    ports:
+      - "3001:3001"
+    depends_on:
+      - sqlserver
+    volumes:
+      - ./client/public/flags:/app/public/flags:ro
+    restart: unless-stopped
 
   client:
     build:
@@ -48,10 +49,10 @@ services:
       dockerfile: Dockerfile
     container_name: tipp-client
     environment:
-      - VITE_API_URL=http://localhost:3001
+      - VITE_API_URL=http://server:3001
     ports:
       - "5173:5173"
-    depends on:
+    depends_on:
       - server
     restart: unless-stopped
 

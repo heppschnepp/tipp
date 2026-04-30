@@ -24,6 +24,12 @@ Wait ~30 seconds for services to start, then access:
 | server   | 3001 | Express REST API |
 | sqlserver | 1433 | MSSQL Server database |
 
+**Client architecture:** See [client/ARCHITECTURE.md](./client/ARCHITECTURE.md) for component structure, state management, and API client.
+
+**Server architecture:** See [server/ARCHITECTURE.md](./server/ARCHITECTURE.md) for module structure, patterns, request flow.
+
+**Server Architecture:** See [server/ARCHITECTURE.md](./server/ARCHITECTURE.md) for module structure, patterns, and design decisions.
+
 ### Volumes
 
 - `sqlserver_data` — Database persistence
@@ -38,6 +44,19 @@ Wait ~30 seconds for services to start, then access:
 **Note**: Match results are fetched automatically from the WC2026 API every 15 minutes. No manual data entry required.
 
 ## Development (Without Docker)
+
+### Project Structure
+
+The server follows a layered architecture with clear separation of concerns:
+
+- **Controllers** (`src/controllers/`) — request handlers (business logic)
+- **Routes** (`src/routes/`) — Express Routers + middleware wiring
+- **Middleware** (`src/middleware/`) — auth, error handling
+- **Validation** (`src/validation/`) — Zod schemas + validate() middleware
+- **Services** (`src/services/`) — external API integration, PDF generation, simulation
+- **Types** (`src/types/db.ts`) — database row interfaces
+
+For full details, see [server/ARCHITECTURE.md](./server/ARCHITECTURE.md).
 
 ### Database (MSSQL)
 
@@ -132,15 +151,13 @@ curl http://localhost:3001/api/results/status \
 
 ### PDF Export
 
-PDF generation is handled server-side. The endpoint builds a PDF with group stage tables and knockout brackets, embedding flag images directly from the server's filesystem.
+PDF generation is handled server-side (`services/pdfExport.ts`). The endpoint builds a PDF with group stage tables and knockout brackets, embedding flag images directly from the server's filesystem.
 
 - **Endpoint**: `GET /api/export-pdf` (auth required)
 - **Response**: `application/pdf` attachment, filename includes current date
-- **Flags**: The server reads flag PNGs from `server/public/flags` (mounted/copied there). In Docker, ensure the server container has access to the flag images (see Docker notes below).
+- **Flags**: The server reads flag PNGs from the directory specified by `FLAGS_DIR` env var (default: `../client/public/flags` relative to server working dir in dev, `/app/public/flags` in Docker)
 
-**Docker note**: PDF export requires flag images available to the server. In the provided Docker setup, the flags are not mounted by default. If you need PDF export in Docker, either:
-- Copy flags into the server image (adjust Dockerfile), or
-- Mount a shared volume from client `public/flags` into the server container at the expected path
+**Docker note**: PDF export requires flag images available to the server container. Mount a shared volume from client `public/flags` into the server container, or copy flags into the server image. See `server/ARCHITECTURE.md` for the data flow.
 
 Response:
 ```json
@@ -245,3 +262,23 @@ docker-compose up -d
 ```
 
 This removes all users, predictions, and match results.
+
+## Important Notes
+
+- **No manual result entry**: Admins cannot POST scores — they are fetched automatically from WC2026 API.
+- **MatchKey mapping**: The scheduler maps WC2026 API's `match_number` to frontend keys: `gA0`–`gL5` (group stage, 6 per group) and `ko_r32_0`–`ko_f_0` (knockout).
+- **WC2026 API rate limit**: Free tier allows 100 requests/day. Scheduler fetches every 15 minutes × 24h = 96 requests/day. Within limit, but avoid extra manual calls.
+
+## Additional Documentation
+
+- **Server Architecture**: [server/ARCHITECTURE.md](./server/ARCHITECTURE.md) — module structure, patterns, request flow, adding endpoints
+- **API Examples**: [README_CURL.md](./README_CURL.md) — complete curl command reference for all endpoints
+- **Full Spec**: [SPEC.md](./SPEC.md) — original project specification
+
+
+## Additional Documentation
+
+- **Server Architecture**: [server/ARCHITECTURE.md](./server/ARCHITECTURE.md) — module structure, patterns, request flow, adding endpoints
+- **API Examples**: [README_CURL.md](./README_CURL.md) — complete curl command reference for all endpoints
+- **Full Spec**: [SPEC.md](./SPEC.md) — original project specification
+
