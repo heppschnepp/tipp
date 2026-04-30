@@ -2,11 +2,12 @@ import { type Request, type Response } from "express";
 import { getDb, sql } from "../db.js";
 import type { PredictionRow } from "../types/db.js";
 import type { PredictionInput } from "../validation/schemas.js";
+import { UnauthorizedError } from "../middleware/errorHandler.js";
 
 export const getUserPredictions = async (req: Request, res: Response) => {
   const userId = (req as { user?: { userId: number } }).user?.userId;
   if (!userId) {
-    return res.status(401).json({ error: "Not authenticated" });
+    throw new UnauthorizedError("Not authenticated");
   }
 
   const db = await getDb();
@@ -35,7 +36,7 @@ export const savePrediction = async (
   const userId = (req as { user?: { userId: number } }).user?.userId;
 
   if (!userId) {
-    return res.status(401).json({ error: "Not authenticated" });
+    throw new UnauthorizedError("Not authenticated");
   }
 
   const db = await getDb();
@@ -62,7 +63,7 @@ export const deletePrediction = async (req: Request, res: Response) => {
   const matchKey = req.params.matchKey;
 
   if (!userId) {
-    return res.status(401).json({ error: "Not authenticated" });
+    throw new UnauthorizedError("Not authenticated");
   }
 
   const db = await getDb();

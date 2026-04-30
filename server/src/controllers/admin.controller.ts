@@ -5,6 +5,7 @@ import { simulator } from "../services/simulation.js";
 import { seedDatabase } from "../services/seed.js";
 import type { UserRecord } from "../types/db.js";
 import type { ResetPasswordInput, SimulationInput } from "../validation/schemas.js";
+import { NotFoundError } from "../middleware/errorHandler.js";
 
 export const resetPassword = async (
   req: Request<unknown, unknown, ResetPasswordInput>,
@@ -23,7 +24,7 @@ export const resetPassword = async (
   );
 
   if (result.rowsAffected[0] === 0) {
-    return res.status(404).json({ error: "User not found" });
+    throw new NotFoundError("User not found");
   }
 
   res.json({ success: true });

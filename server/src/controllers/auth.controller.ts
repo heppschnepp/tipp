@@ -4,6 +4,7 @@ import { type Request, type Response } from "express";
 import { getDb, sql } from "../db.js";
 import type { IdRow, CountRow, UserAuthRow } from "../types/db.js";
 import type { RegisterInput, LoginInput } from "../validation/schemas.js";
+import { BadRequestError, UnauthorizedError, NotFoundError } from "../middleware/errorHandler.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "default-secret";
 const JWT_EXPIRES_IN = 604800; // 7 days in seconds
@@ -19,7 +20,7 @@ export const register = async (req: Request<unknown, unknown, RegisterInput>, re
   );
 
   if (existing.recordset.length > 0) {
-    return res.status(400).json({ error: "Username already exists" });
+    throw new BadRequestError("Username already exists");
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -55,13 +56,13 @@ export const login = async (req: Request<unknown, unknown, LoginInput>, res: Res
   );
 
   if (result.recordset.length === 0) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    throw new UnauthorizedError("Invalid credentials");
   }
 
   const user = result.recordset[0];
   const valid = await bcrypt.compare(password, user.PasswordHash);
   if (!valid) {
-    return res.status(401).json({ error: "Invalid credentials" });
+    throw new UnauthorizedError("Invalid credentials");
   }
 
   const secret: jwt.Secret = JWT_SECRET;
@@ -80,7 +81,7 @@ export const login = async (req: Request<unknown, unknown, LoginInput>, res: Res
 export const getMe = async (req: Request, res: Response) => {
   const userId = (req as { user?: { userId: number } }).user?.userId;
   if (!userId) {
-    return res.status(401).json({ error: "Not authenticated" });
+    throw new UnauthorizedError("Not authenticated");
   }
 
   const db = await getDb();
@@ -91,7 +92,7 @@ export const getMe = async (req: Request, res: Response) => {
   );
 
   if (result.recordset.length === 0) {
-    return res.status(404).json({ error: "User not found" });
+    throw new NotFoundError("User not found");
   }
 
   const u = result.recordset[0];
