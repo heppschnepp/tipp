@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
-import type { CellHookData } from 'jspdf-autotable';
+import type { CellHookData, HookData } from 'jspdf-autotable';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -142,133 +142,172 @@ export async function generatePdf(
     })
   );
 
-  // Process groups
-  Object.keys(groups).sort().forEach((gk) => {
-    const g = groups[gk];
+   // Process groups
+   Object.keys(groups).sort().forEach((gk) => {
+     const g = groups[gk];
 
-    doc.setFontSize(16);
-    doc.text(`Group ${gk}`, 10, yPos);
-    yPos += 10;
+     // Save Y position for the group header and account for its height
+     const headerY = yPos;
+     yPos += 10;
 
-    const tableData = g.matches.map((m, matchIndex) => {
-      const key = `g${gk}m${matchIndex}`;
-      const t1 = g.teams[m[0]];
-      const t2 = g.teams[m[1]];
-      const score = scoresMap[key];
+     const tableData = g.matches.map((m, matchIndex) => {
+       const key = `g${gk}m${matchIndex}`;
+       const t1 = g.teams[m[0]];
+       const t2 = g.teams[m[1]];
+       const score = scoresMap[key];
 
-      let scoreText = '- : -';
-      if (score && score.homeScore !== null && score.awayScore !== null) {
-        scoreText = `${score.homeScore} : ${score.awayScore}`;
-      }
+       let scoreText = '- : -';
+       if (score && score.homeScore !== null && score.awayScore !== null) {
+         scoreText = `${score.homeScore} : ${score.awayScore}`;
+       }
 
-      return [
-        { content: t1, styles: { halign: 'left' as const } },
-        { content: scoreText, styles: { halign: 'center' as const } },
-        { content: t2, styles: { halign: 'left' as const } }
-      ];
-    });
+       return [
+         { content: t1, styles: { halign: 'left' as const } },
+         { content: scoreText, styles: { halign: 'center' as const } },
+         { content: t2, styles: { halign: 'left' as const } }
+       ];
+     });
 
-    autoTable(doc, {
-      startY: yPos,
-      head: [['Team 1', 'Score', 'Team 2']],
-      body: tableData,
-      theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
-      columnStyles: {
-        '0': { cellPadding: { left: 12, top: 3, right: 3, bottom: 3 } },
-        '2': { cellPadding: { left: 12, top: 3, right: 3, bottom: 3 } }
-      },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-      bodyStyles: { textColor: 30 },
-      didDrawCell: (data: CellHookData) => {
-        if ((data.column.index === 0 || data.column.index === 2) && data.row.index > 0) {
-          const rowCells = data.row.raw as Array<{ content: string }>;
-          const teamName = rowCells[data.column.index].content;
-          const dataUrl = flagCache.get(teamName);
-          if (dataUrl) {
-            const cell = data.cell;
-            const imgWidth = 8;
-            const imgHeight = 5;
-            const imgX = cell.x + 2;
-            const imgY = cell.y + (cell.height - imgHeight) / 2;
-            try {
-              (data.doc as jsPDF).addImage(dataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight);
-            } catch (err) {
-              console.error('Failed to add flag image', err);
-            }
+     let groupStartPage = -1;
+     let lastDrawnPage = -1;
+
+     autoTable(doc, {
+       startY: yPos,
+       head: [['Team 1', 'Score', 'Team 2']],
+       body: tableData,
+       theme: 'grid',
+       styles: { fontSize: 10, cellPadding: 3 },
+       columnStyles: {
+         '0': { cellPadding: { left: 12, top: 3, right: 3, bottom: 3 } },
+         '2': { cellPadding: { left: 12, top: 3, right: 3, bottom: 3 } }
+       },
+       headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+       bodyStyles: { textColor: 30 },
+       didDrawPage: (hookData: HookData) => {
+         if (groupStartPage === -1) {
+           groupStartPage = hookData.pageNumber;
+           lastDrawnPage = hookData.pageNumber;
+           doc.setFontSize(16);
+           doc.text(`Group ${gk}`, 10, headerY);
+           return;
+         }
+
+         if (hookData.pageNumber > lastDrawnPage) {
+           lastDrawnPage = hookData.pageNumber;
+           doc.setFontSize(16);
+           const marginTop = hookData.settings.margin?.top || 20;
+           const subHeaderY = marginTop - 10;
+           doc.text(`Group ${gk}`, 10, subHeaderY);
+         }
+       },
+       didDrawCell: (data: CellHookData) => {
+         if (data.column.index === 0 || data.column.index === 2) {
+           const rowCells = data.row.raw as Array<{ content: string }>;
+           const teamName = rowCells[data.column.index].content;
+           const dataUrl = flagCache.get(teamName);
+           if (dataUrl) {
+             const cell = data.cell;
+             const imgWidth = 8;
+             const imgHeight = 5;
+             const imgX = cell.x + 2;
+             const imgY = cell.y + (cell.height - imgHeight) / 2;
+             try {
+               (data.doc as jsPDF).addImage(dataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight);
+             } catch (err) {
+               console.error('Failed to add flag image', err);
+             }
+           }
+         }
+       }
+     });
+
+     const finalY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY;
+     yPos = finalY !== undefined ? finalY + 15 : yPos + 20;
+
+     if (yPos > doc.internal.pageSize.height - 20) {
+       doc.addPage();
+       yPos = 20;
+     }
+
+     yPos += 10;
+   });
+
+   // Knockout stage
+   if (knockout && knockout.length > 0) {
+     doc.setFontSize(16);
+     doc.text('Knockout Stage', 10, yPos);
+     yPos += 10;
+
+      knockout.forEach((round) => {
+        const headerY = yPos;
+        yPos += 8;
+
+        const roundTableData = Array.from({ length: round.matches }).map((_, i) => {
+          const key = `ko_${round.id}_${i}`;
+          const score = scoresMap[key];
+          let scoreText = '- : -';
+          if (score && score.homeScore !== null && score.awayScore !== null) {
+            scoreText = `${score.homeScore} : ${score.awayScore}`;
           }
-        }
-      }
-    });
+          return [
+            { content: 'TBD', styles: { halign: 'left' as const } },
+            { content: scoreText, styles: { halign: 'center' as const } },
+            { content: 'TBD', styles: { halign: 'left' as const } }
+          ];
+        });
 
-    const finalY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY;
-    yPos = finalY !== undefined ? finalY + 15 : yPos + 20;
+        let roundStartPage = -1;
+        let lastDrawnRoundPage = -1;
 
-    if (yPos > doc.internal.pageSize.height - 20) {
-      doc.addPage();
-      yPos = 20;
-    }
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Team 1', 'Score', 'Team 2']],
+          body: roundTableData,
+          theme: 'grid',
+          styles: { fontSize: 10, cellPadding: 3 },
+          columnStyles: {
+            '0': { cellPadding: { left: 12, top: 3, right: 3, bottom: 3 } },
+            '2': { cellPadding: { left: 12, top: 3, right: 3, bottom: 3 } }
+          },
+          headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+          bodyStyles: { textColor: 30 },
+          didDrawPage: (hookData: HookData) => {
+            if (roundStartPage === -1) {
+              roundStartPage = hookData.pageNumber;
+              lastDrawnRoundPage = hookData.pageNumber;
+              doc.setFontSize(14);
+              doc.text(round.name, 10, headerY);
+              return;
+            }
 
-    yPos += 10;
-  });
-
-  // Knockout stage
-  if (knockout && knockout.length > 0) {
-    doc.setFontSize(16);
-    doc.text('Knockout Stage', 10, yPos);
-    yPos += 10;
-
-    knockout.forEach((round) => {
-      doc.setFontSize(14);
-      doc.text(round.name, 10, yPos);
-      yPos += 8;
-
-      const roundTableData = Array.from({ length: round.matches }).map((_, i) => {
-        const key = `ko_${round.id}_${i}`;
-        const score = scoresMap[key];
-        let scoreText = '- : -';
-        if (score && score.homeScore !== null && score.awayScore !== null) {
-          scoreText = `${score.homeScore} : ${score.awayScore}`;
-        }
-        return [
-          { content: 'TBD', styles: { halign: 'left' as const } },
-          { content: scoreText, styles: { halign: 'center' as const } },
-          { content: 'TBD', styles: { halign: 'left' as const } }
-        ];
-      });
-
-      autoTable(doc, {
-        startY: yPos,
-        head: [['Team 1', 'Score', 'Team 2']],
-        body: roundTableData,
-        theme: 'grid',
-        styles: { fontSize: 10, cellPadding: 3 },
-        columnStyles: {
-          '0': { cellPadding: { left: 12, top: 3, right: 3, bottom: 3 } },
-          '2': { cellPadding: { left: 12, top: 3, right: 3, bottom: 3 } }
-        },
-        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-        bodyStyles: { textColor: 30 },
-        didDrawCell: (data: CellHookData) => {
-          if ((data.column.index === 0 || data.column.index === 2) && data.row.index > 0) {
-            const rowCells = data.row.raw as Array<{ content: string }>;
-            const teamName = rowCells[data.column.index].content;
-            const dataUrl = flagCache.get(teamName);
-            if (dataUrl) {
-              const cell = data.cell;
-              const imgWidth = 8;
-              const imgHeight = 5;
-              const imgX = cell.x + 2;
-              const imgY = cell.y + (cell.height - imgHeight) / 2;
-              try {
-                (data.doc as jsPDF).addImage(dataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight);
-              } catch (err) {
-                console.error('Failed to add flag image', err);
+            if (hookData.pageNumber > lastDrawnRoundPage) {
+              lastDrawnRoundPage = hookData.pageNumber;
+              doc.setFontSize(14);
+              const marginTop = hookData.settings.margin?.top || 20;
+              const subHeaderY = marginTop - 8;
+              doc.text(round.name, 10, subHeaderY);
+            }
+          },
+          didDrawCell: (data: CellHookData) => {
+            if (data.column.index === 0 || data.column.index === 2) {
+              const rowCells = data.row.raw as Array<{ content: string }>;
+              const teamName = rowCells[data.column.index].content;
+              const dataUrl = flagCache.get(teamName);
+              if (dataUrl) {
+                const cell = data.cell;
+                const imgWidth = 8;
+                const imgHeight = 5;
+                const imgX = cell.x + 2;
+                const imgY = cell.y + (cell.height - imgHeight) / 2;
+                try {
+                  (data.doc as jsPDF).addImage(dataUrl, 'PNG', imgX, imgY, imgWidth, imgHeight);
+                } catch (err) {
+                  console.error('Failed to add flag image', err);
+                }
               }
             }
           }
-        }
-      });
+        });
 
       const finalY = (doc as JsPDFWithAutoTable).lastAutoTable?.finalY;
       yPos = finalY !== undefined ? finalY + 15 : yPos + 20;
