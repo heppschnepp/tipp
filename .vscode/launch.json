@@ -1,0 +1,37 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Backend",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/src/index.ts",
+      "runtimeExecutable": "${workspaceFolder}/server/node_modules/.bin/tsx",
+      "runtimeArgs": ["--import", "tsx"],
+      "cwd": "${workspaceFolder}/server",
+      "envFile": "${workspaceFolder}/server/.env",
+      "console": "integratedTerminal",
+      "outputCapture": "std",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**"],
+      "resolveSourceMapLocations": ["${workspaceFolder}/**", "!**/node_modules/**"]
+    },
+    {
+      "name": "Debug Backend (npm run dev)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm run dev",
+      "cwd": "${workspaceFolder}/server",
+      "envFile": "${workspaceFolder}/server/.env",
+      "autoAttachChildProcesses": true
+    },
+    {
+      "name": "Debug Frontend",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/client/src",
+      "sourceMaps": true
+    }
+  ]
+}

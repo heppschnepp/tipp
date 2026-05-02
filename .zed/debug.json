@@ -1,0 +1,39 @@
+[
+  {
+    "label": "Debug Backend",
+    "adapter": "JavaScript",
+    "type": "node",
+    "request": "launch",
+    "program": "$ZED_WORKTREE_ROOT/server/src/index.ts",
+    "runtimeExecutable": "$ZED_WORKTREE_ROOT/server/node_modules/.bin/tsx",
+    "cwd": "$ZED_WORKTREE_ROOT/server",
+    "envFile": "$ZED_WORKTREE_ROOT/server/.env",
+    "console": "integratedTerminal",
+    "sourceMaps": true,
+    "outputCapture": "std",
+    "skipFiles": ["<node_internals>/**"]
+  },
+  {
+    "label": "Debug Backend (dev)",
+    "adapter": "JavaScript",
+    "type": "node-terminal",
+    "request": "launch",
+    "command": "pnpm run dev",
+    "cwd": "$ZED_WORKTREE_ROOT/server",
+    "envFile": "$ZED_WORKTREE_ROOT/server/.env",
+    "autoAttachChildProcesses": true
+  },
+  {
+    "label": "Debug Frontend",
+    "adapter": "JavaScript",
+    "type": "chrome",
+    "request": "launch",
+    "url": "http://localhost:5173",
+    "webRoot": "$ZED_WORKTREE_ROOT/client/src",
+    "sourceMaps": true,
+    "userDataDir": "$ZED_WORKTREE_ROOT/.chrome-user-data"
+  }
+]
+
+
+
