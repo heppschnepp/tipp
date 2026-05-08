@@ -3,6 +3,7 @@ import { getDb } from "../db.js";
 import type { PredictionRow } from "../types/db.js";
 import type { PredictionInput } from "../validation/schemas.js";
 import { UnauthorizedError } from "../middleware/errorHandler.js";
+import { ValidatedRequest } from "../validation/validate.js";
 
 export const getUserPredictions = async (req: Request, res: Response) => {
   const userId = (req as { user?: { userId: number } }).user?.userId;
@@ -30,43 +31,43 @@ export const getUserPredictions = async (req: Request, res: Response) => {
 };
 
 export const savePrediction = async (
-  req: Request<unknown, unknown, PredictionInput>,
-  res: Response,
+   req: Request,
+   res: Response,
 ) => {
-  const { matchKey, homeScore, awayScore } = req.body;
-  const userId = (req as { user?: { userId: number } }).user?.userId;
+   const { matchKey, homeScore, awayScore } = (req as ValidatedRequest<PredictionInput>).validated;
+   const userId = (req as { user?: { userId: number } }).user?.userId;
 
-  if (!userId) {
-    throw new UnauthorizedError("Not authenticated");
-  }
+   if (!userId) {
+      throw new UnauthorizedError("Not authenticated");
+   }
 
-  const db = await getDb();
-  await db.query(
-    `INSERT INTO tipp_Predictions (UserId, MatchKey, HomeScore, AwayScore, UpdatedAt)
-     VALUES ($1, $2, $3, $4, NOW())
-     ON CONFLICT (UserId, MatchKey) DO UPDATE
-     SET HomeScore = EXCLUDED.HomeScore,
-         AwayScore = EXCLUDED.AwayScore,
-         UpdatedAt = EXCLUDED.UpdatedAt;`,
-    [userId, matchKey, homeScore ?? null, awayScore ?? null]
-  );
+   const db = await getDb();
+   await db.query(
+      `INSERT INTO tipp_Predictions (UserId, MatchKey, HomeScore, AwayScore, UpdatedAt)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (UserId, MatchKey) DO UPDATE
+       SET HomeScore = EXCLUDED.HomeScore,
+           AwayScore = EXCLUDED.AwayScore,
+           UpdatedAt = EXCLUDED.UpdatedAt;`,
+      [userId, matchKey, homeScore, awayScore]
+   );
 
-  res.json({ success: true });
+   res.json({ success: true });
 };
 
 export const deletePrediction = async (req: Request, res: Response) => {
-  const userId = (req as { user?: { userId: number } }).user?.userId;
-  const matchKey = req.params.matchKey;
+   const userId = (req as { user?: { userId: number } }).user?.userId;
+   const matchKey = req.params.matchKey;
 
-  if (!userId) {
-    throw new UnauthorizedError("Not authenticated");
-  }
+   if (!userId) {
+      throw new UnauthorizedError("Not authenticated");
+   }
 
-  const db = await getDb();
-  await db.query(
-    "DELETE FROM tipp_Predictions WHERE UserId = $1 AND MatchKey = $2",
-    [userId, matchKey]
-  );
+   const db = await getDb();
+   await db.query(
+      "DELETE FROM tipp_Predictions WHERE UserId = $1 AND MatchKey = $2",
+      [userId, matchKey]
+   );
 
-  res.json({ success: true });
+   res.json({ success: true });
 };
