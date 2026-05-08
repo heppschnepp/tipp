@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { getDb, sql } from "../db.js";
+import { getDb } from "../db.js";
 import { wc2026, WC2026Match } from "./wc2026.js";
 
 export class ResultScheduler {
@@ -56,13 +56,12 @@ export class ResultScheduler {
         const matchKey = this.mapMatchKey(match);
 
         // Check if already exists with same scores (avoid redundant updates)
-        const checkReq = db.request();
-        checkReq.input("matchKey", sql.VarChar, matchKey);
-        const existing = await checkReq.query(
-          "SELECT HomeScore, AwayScore FROM tipp_MatchResults WHERE MatchKey = @matchKey",
+        const existing = await db.query(
+          "SELECT HomeScore, AwayScore FROM tipp_MatchResults WHERE MatchKey = $1",
+          [matchKey]
         );
 
-        const existingRow = existing.recordset[0];
+        const existingRow = existing.rows[0];
         if (
           existingRow &&
           existingRow.HomeScore === match.home_score &&
@@ -72,28 +71,21 @@ export class ResultScheduler {
           continue;
         }
 
-        // Insert or update result
-        const req = db.request();
-        req.input("matchKey", sql.VarChar, matchKey);
-        req.input("homeScore", sql.Int, match.home_score);
-        req.input("awayScore", sql.Int, match.away_score);
-        req.input("isKnockout", sql.Int, match.round !== "group" ? 1 : 0);
-        req.input(
-          "roundName",
-          sql.VarChar,
-          match.round === "group" ? null : match.round,
+        // Insert or update result using ON CONFLICT
+        await db.query(
+          `
+          INSERT INTO tipp_MatchResults (MatchKey, HomeScore, AwayScore, IsKnockout, RoundName, UpdatedAt, LastFetchedAt)
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+          ON CONFLICT (MatchKey) DO UPDATE
+          SET HomeScore = EXCLUDED.HomeScore,
+              AwayScore = EXCLUDED.AwayScore,
+              IsKnockout = EXCLUDED.IsKnockout,
+              RoundName = EXCLUDED.RoundName,
+              UpdatedAt = NOW(),
+              LastFetchedAt = NOW();
+          `,
+          [matchKey, match.home_score, match.away_score, match.round !== "group" ? 1 : 0, match.round === "group" ? null : match.round]
         );
-
-        await req.query(`
-          MERGE INTO tipp_MatchResults AS target
-          USING (SELECT @matchKey AS MatchKey) AS source
-          ON target.MatchKey = source.MatchKey
-          WHEN MATCHED THEN
-            UPDATE SET HomeScore = @homeScore, AwayScore = @awayScore, IsKnockout = @isKnockout, RoundName = @roundName, UpdatedAt = GETDATE(), LastFetchedAt = GETDATE()
-          WHEN NOT MATCHED THEN
-            INSERT (MatchKey, HomeScore, AwayScore, IsKnockout, RoundName, LastFetchedAt) 
-            VALUES (@matchKey, @homeScore, @awayScore, @isKnockout, @roundName, GETDATE());
-        `);
 
         updated++;
       }

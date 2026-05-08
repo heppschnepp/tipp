@@ -1,5 +1,5 @@
 import { type Request, type Response } from "express";
-import { getDb, sql } from "../db.js";
+import { getDb } from "../db.js";
 import type { GroupNameRow, CountRow } from "../types/db.js";
 
 export interface GroupData {
@@ -15,36 +15,34 @@ export const getGroups = async (_req: Request, res: Response) => {
   const db = await getDb();
 
   const checkTable = await db.query<CountRow>(
-    `SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'tipp_Teams'`,
+    `SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name = 'tipp_teams'`
   );
-  if (checkTable.recordset[0].cnt === 0) {
+  if (!checkTable.rows?.[0]?.cnt) {
     return res.json({});
   }
 
   const groupsResult = await db.query<GroupNameRow>(
-    `SELECT DISTINCT GroupName FROM tipp_Teams WHERE GroupName IS NOT NULL ORDER BY GroupName`,
+    `SELECT DISTINCT groupname FROM tipp_teams WHERE groupname IS NOT NULL ORDER BY groupname`
   );
 
   const GROUPS: Groups = {};
 
-  for (const row of groupsResult.recordset) {
-    const groupName = row.GroupName;
+  for (const row of groupsResult.rows || []) {
+    const groupName = row.groupname;
 
-    const teamsReq = db.request();
-    teamsReq.input("group", sql.VarChar, groupName);
-    const teamsResult = await teamsReq.query<{ Name: string }>(
-      "SELECT Name FROM tipp_Teams WHERE GroupName = @group ORDER BY Id",
+    const teamsResult = await db.query<{ name: string }>(
+      "SELECT name FROM tipp_teams WHERE groupname = $1 ORDER BY id",
+      [groupName]
     );
-    const teamNames = teamsResult.recordset.map((r) => r.Name);
+    const teamNames = teamsResult.rows?.map((r) => r.name) || [];
 
-    const matchesReq = db.request();
-    matchesReq.input("group", sql.VarChar, groupName);
-    const matchesResult = await matchesReq.query<{ MatchOrder: number }>(
-      `SELECT DISTINCT MatchOrder FROM tipp_Matches 
-       WHERE GroupName = @group AND MatchType = 'group'
-       ORDER BY MatchOrder`,
+    const matchesResult = await db.query<{ matchorder: number }>(
+      `SELECT DISTINCT matchorder FROM tipp_matches 
+       WHERE groupname = $1 AND matchtype = 'group'
+       ORDER BY matchorder`,
+      [groupName]
     );
-    const matchOrders = matchesResult.recordset.map((r) => r.MatchOrder);
+    const matchOrders = matchesResult.rows?.map((r) => r.matchorder) || [];
 
     const matchPairs: Record<number, number[]> = {
       0: [0, 1],
@@ -67,14 +65,14 @@ export const getGroups = async (_req: Request, res: Response) => {
 export const getFlags = async (_req: Request, res: Response) => {
   const db = await getDb();
   const checkTable = await db.query<CountRow>(
-    `SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'tipp_Teams'`,
+    `SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name = 'tipp_teams'`
   );
-  if (checkTable.recordset[0].cnt === 0) {
+  if (checkTable.rows[0].cnt === 0) {
     return res.json({ TBD: "❓" });
   }
 
-  const result = await db.query<{ Name: string; Code: string }>(
-    "SELECT Name, Code FROM tipp_Teams",
+  const result = await db.query<{ name: string; code: string }>(
+    "SELECT name, code FROM tipp_teams"
   );
 
   const FLAG_EMOJI_MAP: Record<string, string> = {
@@ -130,8 +128,8 @@ export const getFlags = async (_req: Request, res: Response) => {
   };
 
   const FLAGS: Record<string, string> = {};
-  result.recordset.forEach((row) => {
-    FLAGS[row.Name] = FLAG_EMOJI_MAP[row.Code] || "❓";
+  result.rows.forEach((row) => {
+    FLAGS[row.name] = FLAG_EMOJI_MAP[row.code] || "❓";
   });
   FLAGS["TBD"] = "❓";
   res.json(FLAGS);
@@ -140,42 +138,80 @@ export const getFlags = async (_req: Request, res: Response) => {
 export const getKnockoutRounds = async (_req: Request, res: Response) => {
   const db = await getDb();
   const checkTable = await db.query<CountRow>(
-    `SELECT COUNT(*) as cnt FROM sys.tables WHERE name = 'tipp_Matches'`,
+    `SELECT COUNT(*) as cnt FROM information_schema.tables WHERE table_name = 'tipp_matches'`
   );
-  if (checkTable.recordset[0].cnt === 0) {
+  if (checkTable.rows[0].cnt === 0) {
     return res.json([]);
   }
 
-  const result = await db.query<{ RoundName: string; OrderIdx: number }>(`
-    SELECT DISTINCT RoundName,
-      CASE RoundName 
-        WHEN 'Round of 32' THEN 1 
-        WHEN 'Round of 16' THEN 2 
-        WHEN 'Quarter-finals' THEN 3 
-        WHEN 'Semi-finals' THEN 4 
-        WHEN '3rd Place' THEN 5 
-        WHEN 'Final' THEN 6 
-      END AS OrderIdx
-    FROM tipp_Matches WHERE MatchType = 'knockout' AND RoundName IS NOT NULL ORDER BY OrderIdx
+  const result = await db.query<{ roundname: string; orderidx: number }>(`
+    SELECT DISTINCT roundname,
+      CASE roundname 
+        WHEN 'round of 32' THEN 1 
+        WHEN 'round of 16' THEN 2 
+        WHEN 'quarter-finals' THEN 3 
+        WHEN 'semi-finals' THEN 4 
+        WHEN '3rd place' THEN 5 
+        WHEN 'final' THEN 6 
+      END AS orderidx
+    FROM tipp_matches WHERE matchtype = 'knockout' AND roundname IS NOT NULL ORDER BY orderidx
   `);
 
-  const rounds = result.recordset.map((row) => {
-    const name = row.RoundName;
+  const rounds = result.rows.map((row) => {
+    const name = row.roundname;
     let matches = 1;
-    if (name === "Round of 32") matches = 16;
-    else if (name === "Round of 16") matches = 8;
-    else if (name === "Quarter-finals") matches = 4;
-    else if (name === "Semi-finals") matches = 2;
+    if (name === "round of 32") matches = 16;
+    else if (name === "round of 16") matches = 8;
+    else if (name === "quarter-finals") matches = 4;
+    else if (name === "semi-finals") matches = 2;
 
     let id = "f";
-    if (name === "Round of 32") id = "r32";
-    else if (name === "Round of 16") id = "r16";
-    else if (name === "Quarter-finals") id = "qf";
-    else if (name === "Semi-finals") id = "sf";
-    else if (name === "3rd Place") id = "3rd";
+    if (name === "round of 32") id = "r32";
+    else if (name === "round of 16") id = "r16";
+    else if (name === "quarter-finals") id = "qf";
+    else if (name === "semi-finals") id = "sf";
+    else if (name === "3rd place") id = "3rd";
 
     return { id, name, matches };
   });
 
   res.json(rounds);
+};
+
+export const getMatches = async (_req: Request, res: Response) => {
+  const db = await getDb();
+  
+  // Get all matches with team information
+  const matchesResult = await db.query(`
+    SELECT 
+      m.MatchKey,
+      m.GroupName,
+      m.MatchType,
+      m.RoundName,
+      m.MatchOrder,
+      ht.Name as HomeTeamName,
+      at.Name as AwayTeamName
+    FROM tipp_Matches m
+    LEFT JOIN tipp_Teams ht ON m.HomeTeamId = ht.Id
+    LEFT JOIN tipp_Teams at ON m.AwayTeamId = at.Id
+    ORDER BY 
+      CASE 
+        WHEN m.MatchType = 'group' THEN 0 
+        ELSE 1 
+      END,
+      m.GroupName,
+      m.MatchOrder
+  `);
+  
+  const matches = matchesResult.rows.map(row => ({
+    matchKey: row.matchkey,
+    groupName: row.groupname,
+    matchType: row.matchtype,
+    roundName: row.roundname,
+    matchOrder: row.matchorder,
+    homeTeamName: row.hometeamname,
+    awayTeamName: row.awayteamname
+  }));
+  
+  res.json(matches);
 };

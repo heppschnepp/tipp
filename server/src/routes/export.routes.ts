@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { authMiddleware } from "../middleware/auth.js";
 import { generatePdf } from "../services/pdfExport.js";
-import { getDb, sql } from "../db.js";
+import { getDb } from "../db.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 import { UnauthorizedError } from "../middleware/errorHandler.js";
 
@@ -10,8 +10,8 @@ const router: ReturnType<typeof Router> = Router();
 router.get("/export-pdf", authMiddleware, asyncHandler(async (req: Request, res: Response) => {
   const db = await getDb();
 
-  const groupsResult = await db.query<{ GroupName: string }>(
-    `SELECT DISTINCT GroupName FROM tipp_Teams WHERE GroupName IS NOT NULL ORDER BY GroupName`,
+  const groupsResult = await db.query<{ groupname: string }>(
+    `SELECT DISTINCT groupname FROM tipp_teams WHERE groupname IS NOT NULL ORDER BY groupname`,
   );
 
   interface GroupData {
@@ -23,21 +23,19 @@ router.get("/export-pdf", authMiddleware, asyncHandler(async (req: Request, res:
   }
   const GROUPS: Groups = {};
 
-  for (const row of groupsResult.recordset) {
-    const groupName = row.GroupName;
-    const teamsReq = db.request();
-    teamsReq.input("group", sql.VarChar, groupName);
-    const teamsResult = await teamsReq.query<{ Name: string }>(
-      "SELECT Name FROM tipp_Teams WHERE GroupName = @group ORDER BY Id",
+  for (const row of groupsResult.rows || []) {
+    const groupName = row.groupname;
+    const teamsResult = await db.query<{ name: string }>(
+      "SELECT name FROM tipp_teams WHERE groupname = $1 ORDER BY id",
+      [groupName]
     );
-    const teamNames = teamsResult.recordset.map((r) => r.Name);
+    const teamNames = teamsResult.rows?.map((r) => r.name) || [];
 
-    const matchesReq = db.request();
-    matchesReq.input("group", sql.VarChar, groupName);
-    const matchesResult = await matchesReq.query<{ MatchOrder: number }>(
-      `SELECT DISTINCT MatchOrder FROM tipp_Matches WHERE GroupName = @group AND MatchType = 'group' ORDER BY MatchOrder`,
+    const matchesResult = await db.query<{ matchorder: number }>(
+      `SELECT DISTINCT matchorder FROM tipp_matches WHERE groupname = $1 AND matchtype = 'group' ORDER BY matchorder`,
+      [groupName]
     );
-    const matchOrders = matchesResult.recordset.map((r) => r.MatchOrder);
+    const matchOrders = matchesResult.rows?.map((r) => r.matchorder) || [];
 
     const matchPairs: Record<number, number[]> = {
       0: [0, 1],
@@ -59,67 +57,70 @@ router.get("/export-pdf", authMiddleware, asyncHandler(async (req: Request, res:
     name: string;
     matches: number;
   }
-  const knockoutResult = await db.query<{ RoundName: string }>(`
-    SELECT DISTINCT RoundName,
-      CASE RoundName 
-        WHEN 'Round of 32' THEN 1 
-        WHEN 'Round of 16' THEN 2 
-        WHEN 'Quarter-finals' THEN 3 
-        WHEN 'Semi-finals' THEN 4 
-        WHEN '3rd Place' THEN 5 
-        WHEN 'Final' THEN 6 
-      END AS OrderIdx
-    FROM tipp_Matches WHERE MatchType = 'knockout' AND RoundName IS NOT NULL ORDER BY OrderIdx
+  const knockoutResult = await db.query<{ roundname: string }>(`
+    SELECT DISTINCT roundname,
+      CASE roundname 
+        WHEN 'round of 32' THEN 1 
+        WHEN 'round of 16' THEN 2 
+        WHEN 'quarter-finals' THEN 3 
+        WHEN 'semi-finals' THEN 4 
+        WHEN '3rd place' THEN 5 
+        WHEN 'final' THEN 6 
+      END AS orderidx
+    FROM tipp_matches WHERE matchtype = 'knockout' AND roundname IS NOT NULL ORDER BY orderidx
   `);
 
-  const knockout: KnockoutRound[] = knockoutResult.recordset.map((row) => {
-    const name = row.RoundName;
+  const knockout: KnockoutRound[] = knockoutResult.rows?.map((row) => {
+    const name = row.roundname;
     let matches = 1;
-    if (name === "Round of 32") matches = 16;
-    else if (name === "Round of 16") matches = 8;
-    else if (name === "Quarter-finals") matches = 4;
-    else if (name === "Semi-finals") matches = 2;
+    if (name === "round of 32") matches = 16;
+    else if (name === "round of 16") matches = 8;
+    else if (name === "quarter-finals") matches = 4;
+    else if (name === "semi-finals") matches = 2;
 
     let id = "f";
-    if (name === "Round of 32") id = "r32";
-    else if (name === "Round of 16") id = "r16";
-    else if (name === "Quarter-finals") id = "qf";
-    else if (name === "Semi-finals") id = "sf";
-    else if (name === "3rd Place") id = "3rd";
+    if (name === "round of 32") id = "r32";
+    else if (name === "round of 16") id = "r16";
+    else if (name === "quarter-finals") id = "qf";
+    else if (name === "semi-finals") id = "sf";
+    else if (name === "3rd place") id = "3rd";
 
     return { id, name, matches };
-  });
+  }) || [];
 
-  interface Score {
-    homeScore: number | null;
-    awayScore: number | null;
-  }
+   interface Score {
+     homeScore: number | null;
+     awayScore: number | null;
+   }
   interface ScoresMap {
     [key: string]: Score;
   }
   const scoresMap: ScoresMap = {};
 
-  if ((req as { user?: { isAdmin: boolean } }).user?.isAdmin) {
-    const resultsResult = await db.query<{ MatchKey: string; HomeScore: number | null; AwayScore: number | null }>(
-      'SELECT MatchKey, HomeScore, AwayScore FROM tipp_MatchResults',
-    );
-    resultsResult.recordset.forEach((row) => {
-      scoresMap[row.MatchKey] = { homeScore: row.HomeScore, awayScore: row.AwayScore };
-    });
-  } else {
-    const userId = (req as { user?: { userId: number } }).user?.userId;
-    if (!userId) {
-      throw new UnauthorizedError("Not authenticated");
-    }
-    const request = db.request();
-    request.input("userId", sql.Int, userId);
-    const predictionsResult = await request.query<{ MatchKey: string; HomeScore: number | null; AwayScore: number | null }>(
-      'SELECT MatchKey, HomeScore, AwayScore FROM tipp_Predictions WHERE UserId = @userId',
-    );
-    predictionsResult.recordset.forEach((row) => {
-      scoresMap[row.MatchKey] = { homeScore: row.HomeScore, awayScore: row.AwayScore };
-    });
-  }
+   if ((req as { user?: { isadmin: boolean } }).user?.isadmin) {
+     const resultsResult = await db.query<{ matchkey: string; homescore: number | null; awayscore: number | null }>(
+       'SELECT matchkey, homescore, awayscore FROM tipp_matchresults',
+     );
+     resultsResult.rows?.forEach((row) => {
+       if (row) {
+         scoresMap[row.matchkey] = { homeScore: row.homescore, awayScore: row.awayscore };
+       }
+     });
+   } else {
+     const userId = (req as { user?: { userid: number } }).user?.userid;
+     if (!userId) {
+       throw new UnauthorizedError("Not authenticated");
+     }
+     const predictionsResult = await db.query<{ matchkey: string; homescore: number | null; awayscore: number | null }>(
+       'SELECT matchkey, homescore, awayscore FROM tipp_predictions WHERE userid = $1',
+       [userId]
+     );
+     predictionsResult.rows?.forEach((row) => {
+       if (row) {
+         scoresMap[row.matchkey] = { homeScore: row.homescore, awayScore: row.awayscore };
+       }
+     });
+   }
 
   const pdfBuffer = await generatePdf(GROUPS, knockout, scoresMap);
 

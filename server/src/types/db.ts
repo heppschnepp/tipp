@@ -1,5 +1,5 @@
 export interface IdRow {
-  Id: number;
+  id: number;
 }
 
 export interface CountRow {
@@ -7,80 +7,80 @@ export interface CountRow {
 }
 
 export interface UserAuthRow {
-  Id: number;
-  Username: string;
-  PasswordHash: string;
-  IsAdmin: boolean;
+  id: number;
+  username: string;
+  passwordhash: string;
+  isadmin: boolean;
 }
 
 export interface UserRecord {
-  Id: number;
-  Username: string;
-  IsAdmin: boolean;
-  CreatedAt: Date;
+  id: number;
+  username: string;
+  isadmin: boolean;
+  createdat: Date;
 }
 
 export interface SimpleUserRecord {
-  Id: number;
-  Username: string;
+  id: number;
+  username: string;
 }
 
 export interface PredictionRow {
-  MatchKey: string;
-  HomeScore: number | null;
-  AwayScore: number | null;
-  UserId: number;
+  matchkey: string;
+  homescore: number | null;
+  awayscore: number | null;
+  userid: number;
 }
 
 export interface MatchResultRecord {
-  MatchKey: string;
-  HomeScore: number | null;
-  AwayScore: number | null;
-  IsKnockout: boolean;
-  RoundName: string | null;
+  matchkey: string;
+  homescore: number | null;
+  awayscore: number | null;
+  isknockout: boolean;
+  roundname: string | null;
 }
 
 export interface SimpleMatchResult {
-  MatchKey: string;
-  HomeScore: number;
-  AwayScore: number;
+  matchkey: string;
+  homescore: number;
+  awayscore: number;
 }
 
 export interface TeamNameCodeRow {
-  Name: string;
-  Code: string;
+  name: string;
+  code: string;
 }
 
 export interface GroupNameRow {
-  GroupName: string;
+  groupname: string;
 }
 
 export interface KnockoutRoundRow {
-  RoundName: string;
-  OrderIdx: number;
+  roundname: string;
+  orderidx: number;
 }
 
 export interface LastFetchRecord {
-  lastFetched: Date | null;
+  lastfetched: Date | null;
 }
 
 export interface CountResultRecord {
   total: number;
-  withScores: number;
+  withscores: number;
 }
 
 export interface ResultInfo {
-  homeScore: number | null;
-  awayScore: number | null;
-  isKnockout: boolean;
-  roundName: string | null;
+  homescores: number | null;
+  awayscore: number | null;
+  isknockout: boolean;
+  roundname: string | null;
 }
 
 export interface LeaderboardEntry {
-  userId: number;
+  userid: number;
   username: string;
   exact: number;
   outcome: number;
   total: number;
-  predictionCount: number;
+  predictioncount: number;
 }

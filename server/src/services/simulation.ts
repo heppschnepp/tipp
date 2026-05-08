@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { getDb, sql } from "../db.js";
+import { getDb } from "../db.js";
 import { seedDatabase } from "./seed.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "default-secret";
@@ -57,30 +57,25 @@ export class TournamentSimulator {
       const username = `player${i}`;
       const password = `test123`;
 
-      const checkReq = db.request();
-      checkReq.input("username", sql.VarChar, username);
-      const existing = await checkReq.query(
-        "SELECT Id, IsAdmin FROM tipp_Users WHERE Username = @username",
+      const existing = await db.query(
+        "SELECT Id, IsAdmin FROM tipp_Users WHERE Username = $1",
+        [username]
       );
 
       let userId: number;
       let isAdmin = false;
 
-      if (existing.recordset.length > 0) {
-        userId = existing.recordset[0].Id;
-        isAdmin = !!existing.recordset[0].IsAdmin;
-      } else {
-        const passwordHash = await bcrypt.hash(password, 10);
-        const insertReq = db.request();
-        insertReq.input("username", sql.VarChar, username);
-        insertReq.input("passwordHash", sql.VarChar, passwordHash);
-        insertReq.input("isAdmin", sql.Int, 0);
-
-        const result = await insertReq.query<{ Id: number }>(
-          "INSERT INTO tipp_Users (Username, PasswordHash, IsAdmin) OUTPUT INSERTED.Id VALUES (@username, @passwordHash, @isAdmin)",
-        );
-        userId = result.recordset[0].Id;
-      }
+        if (existing.rowCount !== null && existing.rowCount > 0) {
+         userId = existing.rows[0].id;
+         isAdmin = !!existing.rows[0].isadmin;
+       } else {
+         const passwordHash = await bcrypt.hash(password, 10);
+         const result = await db.query<{ id: number }>(
+           "INSERT INTO tipp_Users (username, passwordhash, isadmin) VALUES ($1, $2, $3) RETURNING id",
+           [username, passwordHash, 0]
+         );
+         userId = result.rows[0].id;
+       }
 
       const token = jwt.sign({ userId, username, isAdmin }, JWT_SECRET, {
         expiresIn: JWT_EXPIRES_IN,
@@ -100,20 +95,14 @@ export class TournamentSimulator {
       const homeScore = this.getRandomScore();
       const awayScore = this.getRandomScore();
 
-      const request = db.request();
-      request.input("userId", sql.Int, player.userId);
-      request.input("matchKey", sql.VarChar, matchKey);
-      request.input("homeScore", sql.Int, homeScore);
-      request.input("awayScore", sql.Int, awayScore);
-
-      await request.query(
-        `MERGE INTO tipp_Predictions AS target
-         USING (SELECT @userId AS UserId, @matchKey AS MatchKey) AS source
-         ON target.UserId = source.UserId AND target.MatchKey = source.MatchKey
-         WHEN MATCHED THEN
-           UPDATE SET HomeScore = @homeScore, AwayScore = @awayScore, UpdatedAt = GETDATE()
-         WHEN NOT MATCHED THEN
-           INSERT (UserId, MatchKey, HomeScore, AwayScore) VALUES (@userId, @matchKey, @homeScore, @awayScore);`,
+      await db.query(
+        `INSERT INTO tipp_Predictions (UserId, MatchKey, HomeScore, AwayScore, UpdatedAt)
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (UserId, MatchKey) DO UPDATE
+         SET HomeScore = EXCLUDED.HomeScore,
+             AwayScore = EXCLUDED.AwayScore,
+             UpdatedAt = EXCLUDED.UpdatedAt;`,
+        [player.userId, matchKey, homeScore, awayScore]
       );
     }
   }
@@ -143,21 +132,17 @@ export class TournamentSimulator {
         roundName = "Final";
       }
 
-      const request = db.request();
-      request.input("matchKey", sql.VarChar, matchKey);
-      request.input("homeScore", sql.Int, homeScore);
-      request.input("awayScore", sql.Int, awayScore);
-      request.input("isKnockout", sql.Int, isKnockout ? 1 : 0);
-      request.input("roundName", sql.VarChar, roundName);
-
-      await request.query(
-        `MERGE INTO tipp_MatchResults AS target
-         USING (SELECT @matchKey AS MatchKey) AS source
-         ON target.MatchKey = source.MatchKey
-         WHEN MATCHED THEN
-           UPDATE SET HomeScore = @homeScore, AwayScore = @awayScore, IsKnockout = @isKnockout, RoundName = @roundName, UpdatedAt = GETDATE(), LastFetchedAt = GETDATE()
-         WHEN NOT MATCHED THEN
-           INSERT (MatchKey, HomeScore, AwayScore, IsKnockout, RoundName, UpdatedAt, LastFetchedAt) VALUES (@matchKey, @homeScore, @awayScore, @isKnockout, @roundName, GETDATE(), GETDATE());`,
+      await db.query(
+        `INSERT INTO tipp_MatchResults (MatchKey, HomeScore, AwayScore, IsKnockout, RoundName, UpdatedAt, LastFetchedAt)
+         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+         ON CONFLICT (MatchKey) DO UPDATE
+         SET HomeScore = EXCLUDED.HomeScore,
+             AwayScore = EXCLUDED.AwayScore,
+             IsKnockout = EXCLUDED.IsKnockout,
+             RoundName = EXCLUDED.RoundName,
+             UpdatedAt = NOW(),
+             LastFetchedAt = NOW();`,
+        [matchKey, homeScore, awayScore, isKnockout ? 1 : 0, roundName]
       );
     }
   }
@@ -198,30 +183,23 @@ export class TournamentSimulator {
     if (this.simulatedPlayers.length > 0) {
       const userIds = this.simulatedPlayers.map((p) => p.userId);
 
-      const predReq = db.request();
-      userIds.forEach((id, idx) => {
-        predReq.input(`id${idx}`, sql.Int, id);
-      });
-      const predResult = await predReq.query(
-        `DELETE FROM tipp_Predictions WHERE UserId IN (${userIds.map((_, idx) => `@id${idx}`).join(",")})`,
+      const predResult = await db.query(
+        "DELETE FROM tipp_Predictions WHERE UserId = ANY($1)",
+        [userIds]
       );
-      predictionsDeleted = predResult.rowsAffected[0];
+      predictionsDeleted = predResult.rowCount ?? 0;
 
-      const userReq = db.request();
-      userIds.forEach((id, idx) => {
-        userReq.input(`id${idx}`, sql.Int, id);
-      });
-      const userResult = await userReq.query(
-        `DELETE FROM tipp_Users WHERE Id IN (${userIds.map((_, idx) => `@id${idx}`).join(",")})`,
+      const userResult = await db.query(
+        "DELETE FROM tipp_Users WHERE Id = ANY($1)",
+        [userIds]
       );
-      usersDeleted = userResult.rowsAffected[0];
+      usersDeleted = userResult.rowCount ?? 0;
 
       this.simulatedPlayers = [];
     }
 
-    const resultReq = db.request();
-    const resultResult = await resultReq.query("DELETE FROM tipp_MatchResults");
-    resultsDeleted = resultResult.rowsAffected[0];
+    const resultResult = await db.query("DELETE FROM tipp_MatchResults");
+    resultsDeleted = resultResult.rowCount ?? 0;
 
     return {
       usersDeleted,

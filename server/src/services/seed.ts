@@ -1,4 +1,4 @@
-import { getDb, sql } from "../db.js";
+import { getDb } from "../db.js";
 
 export const SEED_TEAMS = [
   { name: "Mexico", code: "MEX", group: "A" },
@@ -201,18 +201,15 @@ export async function seedDatabase(): Promise<void> {
 
   // Check if teams already exist
   const teamsCheck = await db.query("SELECT COUNT(*) as cnt FROM tipp_Teams");
-  const teamsExist = teamsCheck.recordset[0].cnt > 0;
+  const teamsExist = teamsCheck.rows[0].cnt > 0;
 
   // Insert teams if missing
   if (!teamsExist) {
     console.log("Inserting teams...");
     for (const team of SEED_TEAMS) {
-      const req = db.request();
-      req.input("name", sql.NVarChar, team.name);
-      req.input("code", sql.NVarChar, team.code);
-      req.input("group", sql.NVarChar, team.group);
-      await req.query(
-        "INSERT INTO tipp_Teams (Name, Code, GroupName) VALUES (@name, @code, @group)",
+      await db.query(
+        "INSERT INTO tipp_Teams (Name, Code, GroupName) VALUES ($1, $2, $3)",
+        [team.name, team.code, team.group]
       );
     }
   } else {
@@ -222,12 +219,11 @@ export async function seedDatabase(): Promise<void> {
   // Ensure group matches exist (idempotent)
   console.log("Ensuring group stage matches...");
   for (const gm of GROUP_MATCHES) {
-    const teamsReq = db.request();
-    teamsReq.input("group", sql.NVarChar, gm.group);
-    const teamsResult = await teamsReq.query(
-      "SELECT Id, Name FROM tipp_Teams WHERE GroupName = @group ORDER BY Id",
+    const teamsResult = await db.query(
+      "SELECT Id, Name FROM tipp_Teams WHERE GroupName = $1 ORDER BY Id",
+      [gm.group]
     );
-    const teamIds = teamsResult.recordset.map((r: { Id: number }) => r.Id);
+    const teamIds = teamsResult.rows.map((r: { Id: number }) => r.Id);
 
     if (teamIds.length < 4) {
       console.warn(
@@ -239,16 +235,11 @@ export async function seedDatabase(): Promise<void> {
     for (let i = 0; i < gm.matches.length; i++) {
       const [homeIdx, awayIdx] = gm.matches[i];
       const matchKey = `g${gm.group}m${i}`;
-      const matchReq = db.request();
-      matchReq.input("matchKey", sql.NVarChar, matchKey);
-      matchReq.input("group", sql.NVarChar, gm.group);
-      matchReq.input("homeId", sql.Int, teamIds[homeIdx]);
-      matchReq.input("awayId", sql.Int, teamIds[awayIdx]);
-      matchReq.input("order", sql.Int, i);
-      await matchReq.query(
-        `IF NOT EXISTS (SELECT 1 FROM tipp_Matches WHERE MatchKey = @matchKey)
-         INSERT INTO tipp_Matches (MatchKey, GroupName, MatchType, RoundName, HomeTeamId, AwayTeamId, MatchOrder)
-         VALUES (@matchKey, @group, 'group', NULL, @homeId, @awayId, @order)`,
+      await db.query(
+        `INSERT INTO tipp_Matches (MatchKey, GroupName, MatchType, RoundName, HomeTeamId, AwayTeamId, MatchOrder)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (MatchKey) DO NOTHING`,
+        [matchKey, gm.group, 'group', null, teamIds[homeIdx], teamIds[awayIdx], i]
       );
     }
   }
@@ -270,14 +261,11 @@ export async function seedDatabase(): Promise<void> {
                   ? "3rd"
                   : "f";
       const matchKey = `ko_${roundId}_${i}`;
-      const koReq = db.request();
-      koReq.input("matchKey", sql.NVarChar, matchKey);
-      koReq.input("round", sql.NVarChar, kr.round);
-      koReq.input("order", sql.Int, i);
-      await koReq.query(
-        `IF NOT EXISTS (SELECT 1 FROM tipp_Matches WHERE MatchKey = @matchKey)
-         INSERT INTO tipp_Matches (MatchKey, GroupName, MatchType, RoundName, HomeTeamId, AwayTeamId, MatchOrder)
-         VALUES (@matchKey, NULL, 'knockout', @round, NULL, NULL, @order)`,
+      await db.query(
+        `INSERT INTO tipp_Matches (MatchKey, GroupName, MatchType, RoundName, HomeTeamId, AwayTeamId, MatchOrder)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (MatchKey) DO NOTHING`,
+        [matchKey, null, 'knockout', kr.round, null, null, i]
       );
     }
   }

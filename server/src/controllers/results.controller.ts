@@ -7,16 +7,16 @@ import { ForbiddenError } from "../middleware/errorHandler.js";
 export const getResults = async (_req: Request, res: Response) => {
   const db = await getDb();
   const result = await db.query<MatchResultRecord>(
-    "SELECT MatchKey, HomeScore, AwayScore, IsKnockout, RoundName FROM tipp_MatchResults",
+    "SELECT matchkey, homescore, awayscore, isknockout, roundname FROM tipp_matchresults",
   );
 
   const results: Record<string, ResultInfo> = {};
-  result.recordset.forEach((row) => {
-    results[row.MatchKey] = {
-      homeScore: row.HomeScore,
-      awayScore: row.AwayScore,
-      isKnockout: row.IsKnockout,
-      roundName: row.RoundName,
+  result.rows.forEach((row) => {
+    results[row.matchkey] = {
+      homescores: row.homescore,
+      awayscore: row.awayscore,
+      isknockout: row.isknockout,
+      roundname: row.roundname,
     };
   });
 
@@ -24,7 +24,7 @@ export const getResults = async (_req: Request, res: Response) => {
 };
 
 export const getFetchStatus = async (req: Request, res: Response) => {
-  const isAdmin = (req as { user?: { isAdmin: boolean } }).user?.isAdmin;
+  const isAdmin = (req as { user?: { isadmin: boolean } }).user?.isadmin;
   if (!isAdmin) {
     throw new ForbiddenError("Admin access required");
   }
@@ -32,17 +32,17 @@ export const getFetchStatus = async (req: Request, res: Response) => {
   const db = await getDb();
 
   const lastFetchResult = await db.query<LastFetchRecord>(`
-    SELECT MAX(LastFetchedAt) as lastFetched
-    FROM tipp_MatchResults
-    WHERE LastFetchedAt IS NOT NULL
+    SELECT MAX(lastfetched) as lastfetched
+    FROM tipp_matchresults
+    WHERE lastfetched IS NOT NULL
   `);
 
-  const lastFetched = lastFetchResult.recordset[0]?.lastFetched;
+  const lastFetched = lastFetchResult.rows[0]?.lastfetched;
 
   const countResult = await db.query<CountResultRecord>(`
     SELECT COUNT(*) as total,
-           SUM(CASE WHEN HomeScore IS NOT NULL AND AwayScore IS NOT NULL THEN 1 ELSE 0 END) as withScores
-    FROM tipp_MatchResults
+           SUM(CASE WHEN homescores IS NOT NULL AND awayscore IS NOT NULL THEN 1 ELSE 0 END) as withscores
+  FROM tipp_matchresults
   `);
 
   const schedulerStatus = resultScheduler.getStatus();
@@ -55,6 +55,6 @@ export const getFetchStatus = async (req: Request, res: Response) => {
       lastRun: schedulerStatus.lastRun,
       lastError: schedulerStatus.lastError,
     },
-    database: countResult.recordset[0],
+    database: countResult.rows[0],
   });
 };

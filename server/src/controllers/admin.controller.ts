@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { type Request, type Response } from "express";
-import { getDb, sql } from "../db.js";
+import { getDb } from "../db.js";
 import { simulator } from "../services/simulation.js";
 import { seedDatabase } from "../services/seed.js";
 import type { UserRecord } from "../types/db.js";
@@ -16,14 +16,12 @@ export const resetPassword = async (
   const db = await getDb();
   const passwordHash = await bcrypt.hash(newPassword, 10);
 
-  const request = db.request();
-  request.input("userId", sql.Int, userId);
-  request.input("passwordHash", sql.VarChar, passwordHash);
-  const result = await request.query(
-    "UPDATE tipp_Users SET PasswordHash = @passwordHash WHERE Id = @userId",
+  const result = await db.query(
+    "UPDATE tipp_Users SET PasswordHash = $1 WHERE Id = $2 RETURNING Id",
+    [passwordHash, userId]
   );
 
-  if (result.rowsAffected[0] === 0) {
+  if (result.rowCount === 0) {
     throw new NotFoundError("User not found");
   }
 
@@ -72,10 +70,10 @@ export const getSimulationStatus = async (req: Request, res: Response) => {
   const db = await getDb();
 
   const usersResult = await db.query<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM tipp_Users WHERE Username LIKE 'player%'",
+    "SELECT COUNT(*) as cnt FROM tipp_Users WHERE Username LIKE 'player%'"
   );
   const predictionsResult = await db.query<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM tipp_Predictions",
+    "SELECT COUNT(*) as cnt FROM tipp_Predictions"
   );
   const resultsResult = await db.query<{ cnt: number; withScores: number }>(`
     SELECT COUNT(*) as cnt, 
@@ -84,11 +82,11 @@ export const getSimulationStatus = async (req: Request, res: Response) => {
   `);
 
   res.json({
-    simulatedPlayers: usersResult.recordset[0].cnt,
-    totalPredictions: predictionsResult.recordset[0].cnt,
+    simulatedPlayers: usersResult.rows[0].cnt,
+    totalPredictions: predictionsResult.rows[0].cnt,
     matchResults: {
-      total: resultsResult.recordset[0].cnt,
-      withScores: resultsResult.recordset[0].withScores,
+      total: resultsResult.rows[0].cnt,
+      withScores: resultsResult.rows[0].withScores,
     },
     players: simulator
       .getPlayers()
@@ -107,13 +105,13 @@ export const seedData = async (_req: Request, res: Response) => {
 export const getUsers = async (_req: Request, res: Response) => {
   const db = await getDb();
   const result = await db.query<UserRecord>(
-    "SELECT Id, Username, IsAdmin, CreatedAt FROM tipp_Users ORDER BY Id",
+    "SELECT id, username, isadmin, createdat FROM tipp_Users ORDER BY id"
   );
-  const users = result.recordset.map((u) => ({
-    id: u.Id,
-    username: u.Username,
-    isAdmin: !!u.IsAdmin,
-    createdAt: u.CreatedAt,
+  const users = result.rows.map((u) => ({
+    id: u.id,
+    username: u.username,
+    isAdmin: !!u.isadmin,
+    createdAt: u.createdat,
   }));
   res.json(users);
 };

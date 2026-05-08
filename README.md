@@ -1,6 +1,6 @@
 # World Cup 2026 Prediction Game
 
-Full-stack prediction game built with React, Express, TypeScript, and MSSQL.
+Full-stack prediction game built with React, Express, TypeScript, and PostgreSQL.
 
 ## Documentation
 

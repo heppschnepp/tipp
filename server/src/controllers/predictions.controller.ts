@@ -1,5 +1,5 @@
 import { type Request, type Response } from "express";
-import { getDb, sql } from "../db.js";
+import { getDb } from "../db.js";
 import type { PredictionRow } from "../types/db.js";
 import type { PredictionInput } from "../validation/schemas.js";
 import { UnauthorizedError } from "../middleware/errorHandler.js";
@@ -11,18 +11,19 @@ export const getUserPredictions = async (req: Request, res: Response) => {
   }
 
   const db = await getDb();
-  const request = db.request();
-  request.input("userId", sql.Int, userId);
-  const result = await request.query<PredictionRow>(
-    "SELECT MatchKey, HomeScore, AwayScore FROM tipp_Predictions WHERE UserId = @userId",
+  const result = await db.query<PredictionRow>(
+    "SELECT matchkey, homescore, awayscore FROM tipp_Predictions WHERE userId = $1",
+    [userId]
   );
 
   const predictions: Record<string, { homeScore: number | null; awayScore: number | null }> = {};
-  result.recordset.forEach((row) => {
-    predictions[row.MatchKey] = {
-      homeScore: row.HomeScore,
-      awayScore: row.AwayScore,
-    };
+  result.rows.forEach((row) => {
+    if (row) {
+      predictions[row.matchkey] = {
+        homeScore: row.homescore,
+        awayScore: row.awayscore,
+      };
+    }
   });
 
   res.json(predictions);
@@ -40,19 +41,14 @@ export const savePrediction = async (
   }
 
   const db = await getDb();
-  const request = db.request();
-  request.input("userId", sql.Int, userId);
-  request.input("matchKey", sql.VarChar, matchKey);
-  request.input("homeScore", sql.Int, homeScore ?? null);
-  request.input("awayScore", sql.Int, awayScore ?? null);
-  await request.query(
-    `MERGE INTO tipp_Predictions AS target
-   USING (SELECT @userId AS UserId, @matchKey AS MatchKey) AS source
-   ON target.UserId = source.UserId AND target.MatchKey = source.MatchKey
-   WHEN MATCHED THEN
-     UPDATE SET HomeScore = @homeScore, AwayScore = @awayScore, UpdatedAt = GETDATE()
-   WHEN NOT MATCHED THEN
-     INSERT (UserId, MatchKey, HomeScore, AwayScore) VALUES (@userId, @matchKey, @homeScore, @awayScore);`,
+  await db.query(
+    `INSERT INTO tipp_Predictions (UserId, MatchKey, HomeScore, AwayScore, UpdatedAt)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (UserId, MatchKey) DO UPDATE
+     SET HomeScore = EXCLUDED.HomeScore,
+         AwayScore = EXCLUDED.AwayScore,
+         UpdatedAt = EXCLUDED.UpdatedAt;`,
+    [userId, matchKey, homeScore ?? null, awayScore ?? null]
   );
 
   res.json({ success: true });
@@ -67,11 +63,9 @@ export const deletePrediction = async (req: Request, res: Response) => {
   }
 
   const db = await getDb();
-  const request = db.request();
-  request.input("userId", sql.Int, userId);
-  request.input("matchKey", sql.VarChar, matchKey);
-  await request.query(
-    "DELETE FROM tipp_Predictions WHERE UserId = @userId AND MatchKey = @matchKey",
+  await db.query(
+    "DELETE FROM tipp_Predictions WHERE UserId = $1 AND MatchKey = $2",
+    [userId, matchKey]
   );
 
   res.json({ success: true });

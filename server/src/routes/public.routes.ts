@@ -3,6 +3,7 @@ import {
   getGroups,
   getFlags,
   getKnockoutRounds,
+  getMatches,
 } from "../controllers/groups.controller.js";
 import { getLeaderboard } from "../controllers/leaderboard.controller.js";
 import { getResults, getFetchStatus } from "../controllers/results.controller.js";
@@ -13,6 +14,7 @@ const router: ReturnType<typeof Router> = Router();
 router.get("/groups", asyncHandler(getGroups));
 router.get("/flags", asyncHandler(getFlags));
 router.get("/knockout", asyncHandler(getKnockoutRounds));
+router.get("/matches", asyncHandler(getMatches));
 router.get("/leaderboard", asyncHandler(getLeaderboard));
 router.get("/results", asyncHandler(getResults));
 router.get("/results/status", asyncHandler(getFetchStatus));
