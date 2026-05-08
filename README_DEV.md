@@ -12,7 +12,7 @@ cd tipp
 docker-compose up -d
 ```
 
-Wait ~30 seconds for services to start, then access:
+Wait ~10 seconds for services to start, then access:
 - **Client**: http://localhost:5173
 - **API**: http://localhost:3001
 
@@ -22,17 +22,15 @@ Wait ~30 seconds for services to start, then access:
 |----------|-----|-------------|
 | client   | 5173 | React/Vite frontend |
 | server   | 3001 | Express REST API |
-| sqlserver | 1433 | MSSQL Server database |
+| postgres | 5432 | PostgreSQL database |
 
 **Client architecture:** See [client/ARCHITECTURE.md](./client/ARCHITECTURE.md) for component structure, state management, and API client.
 
-**Server architecture:** See [server/ARCHITECTURE.md](./server/ARCHITECTURE.md) for module structure, patterns, request flow.
-
-**Server Architecture:** See [server/ARCHITECTURE.md](./server/ARCHITECTURE.md) for module structure, patterns, and design decisions.
+**Server architecture:** See [server/ARCHITECTURE.md](./server/ARCHITECTURE.md) for module structure, patterns, and design decisions.
 
 ### Volumes
 
-- `sqlserver_data` — Database persistence
+- `postgres_data` — Database persistence
 - `flags_share` — Shared flag images between client and server (mounted at `/app/public/flags` in server)
 
 ## First Run

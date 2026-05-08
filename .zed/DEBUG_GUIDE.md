@@ -358,7 +358,7 @@ pkill -f 'tsx\|vite' || true
 
 **"Failed to start" / Database error**
 - Check `server/.env` has correct DB credentials
-- Ensure database is running (Docker or local MSSQL)
+- Ensure database is running (Docker or local PostgreSQL)
 
 ### Frontend Debugger Won't Start
 

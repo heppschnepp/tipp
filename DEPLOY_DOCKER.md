@@ -6,8 +6,8 @@ This guide covers deploying the World Cup 2026 Prediction Game to a server runni
 
 - Docker Engine 20.10+ installed and running
 - Docker Compose plugin (`docker compose`) installed
-- At least 3 GB free RAM (SQL Server needs ~2 GB)
-- Ports `5173`, `3001`, `1433` available on the host
+- At least 1 GB free RAM (PostgreSQL needs ~150 MB)
+- Ports `5173`, `3001`, `5432` available on the host
 
 ---
 
@@ -52,12 +52,12 @@ docker compose up -d
 ```
 
 That's it. Docker Compose will:
-- Pull `mcr.microsoft.com/mssql/server:2022-latest` (SQL Server)
+- Pull `postgres:15-alpine` (PostgreSQL database)
 - Build and start the server (Express API on port 3001)
 - Build and start the client (React dev server on port 5173)
 - Create a persistent volume for the database
 
-**Wait ~30 seconds** for SQL Server to initialize, then open http://localhost:5173 in your browser (or your server's IP).
+**Wait ~10 seconds** for PostgreSQL to initialize, then open http://localhost:5173 in your browser (or your server's IP).
 
 ---
 
@@ -65,12 +65,12 @@ That's it. Docker Compose will:
 
 | Container | Image | Port | Purpose |
 |-----------|-------|------|---------|
-| `tipp-sqlserver` | `mcr.microsoft.com/mssql/server:2022-latest` | `1433` | MSSQL database (volume: `sqlserver_data`) |
+| `tipp-postgres` | `postgres:15-alpine` | `5432` | PostgreSQL database (volume: `postgres_data`) |
 | `tipp-server` | Built from `server/Dockerfile` | `3001` | Express REST API |
 | `tipp-client` | Built from `client/Dockerfile` | `5173` | React + Vite dev server |
 
 **Volumes:**
-- `sqlserver_data` — persists database across container restarts
+- `postgres_data` — persists database across container restarts
 - Bind mount: `./client/public/flags` → `/app/public/flags` in server (for PDF export)
 
 ---
@@ -326,13 +326,11 @@ Ensure the server waits for SQL Server to be ready. The `depends_on` only checks
 
 ```bash
 # Export from running container
-docker exec -i tipp-sqlserver /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'YourStrong@Passw0rd' -d tipp \
-  -Q "BACKUP DATABASE tipp TO DISK = '/var/opt/mssql/backup/tipp.bak'"
+docker exec -i tipp-postgres pg_dump -U lportal -d tipp > backup.sql
 
-# Copy from host (volume is at ./sqlserver_data)
-docker stop tipp-sqlserver
-cp -r sqlserver_data/../backup ./backup/
+# Or copy from host (volume is at ./postgres_data)
+docker stop tipp-postgres
+cp -r postgres_data/../backup ./backup/
 ```
 
 ### Restore database
@@ -341,10 +339,8 @@ cp -r sqlserver_data/../backup ./backup/
 # Stop server (optional)
 docker compose stop server
 
-# Restore from backup file mounted/copied into container
-docker exec -i tipp-sqlserver /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'YourStrong@Passw0rd' \
-  -Q "RESTORE DATABASE tipp FROM DISK = '/var/opt/mssql/backup/tipp.bak' WITH REPLACE"
+# Restore from backup file
+cat backup.sql | docker exec -i tipp-postgres psql -U lportal -d tipp
 
 # Restart
 docker compose start server
