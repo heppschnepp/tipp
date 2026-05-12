@@ -31,7 +31,7 @@ Wait ~10 seconds for services to start, then access:
 ### Volumes
 
 - `postgres_data` — Database persistence
-- `flags_share` — Shared flag images between client and server (mounted at `/app/public/flags` in server)
+- Flag images are mounted directly from `./client/public/flags` to `/app/public/flags` in the server container
 
 ## First Run
 
@@ -56,17 +56,17 @@ The server follows a layered architecture with clear separation of concerns:
 
 For full details, see [server/ARCHITECTURE.md](./server/ARCHITECTURE.md).
 
-### Database (MSSQL)
+### Database (PostgreSQL)
 
 **Option A: Docker**
 ```bash
-docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=YourStrong@Passw0rd" \
-  -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
+docker run -e "POSTGRES_USER=lportal" -e "POSTGRES_PASSWORD=lportal" -e "POSTGRES_DB=tipp" \
+  -p 5432:5432 postgres:15-alpine
 ```
 
-**Option B: Local SQL Server**
-- Install SQL Server 2022+
-- Create database `tipp`
+**Option B: Local PostgreSQL**
+- Install PostgreSQL 15+
+- Create database `tipp` with user `lportal`
 - Update connection in `server/.env`
 
 ### Server
@@ -89,13 +89,33 @@ pnpm run dev
 
 Runs on http://localhost:5173
 
+### Root Folder (Parallel)
+
+Start both from the root folder in two separate terminals:
+
+**Terminal 1:**
+```bash
+pnpm server:dev
+```
+
+**Terminal 2:**
+```bash
+pnpm client:dev
+```
+
+Or use the convenience scripts from the root:
+```bash
+pnpm server:dev
+pnpm client:dev
+```
+
 ## Environment Variables
 
 ### server/.env
 ```
 PORT=3001
 DB_SERVER=localhost
-DB_PORT=1433
+DB_PORT=5432
 DB_NAME=tipp
 DB_USER=lportal
 DB_PASSWORD=lportal
@@ -117,8 +137,8 @@ FLAGS_DIR=/app/public/flags
 
 ## Database
 
-- **Stored in container**: Yes, MSSQL runs inside the `sqlserver` container
-- **Persistence**: Volume `sqlserver_data` in docker-compose.yml
+- **Stored in container**: Yes, PostgreSQL runs inside the `postgres` container
+- **Persistence**: Volume `postgres_data` in docker-compose.yml
 - **Table prefix**: `tipp_` (tipp_Users, tipp_Predictions, tipp_MatchResults, etc.)
 - **Automatic seeding**: On first startup, the server inserts all 48 teams, 104 matches (group + knockout), and TBD placeholder automatically.
 
@@ -212,21 +232,21 @@ This is idempotent – safe to run multiple times. It only inserts missing teams
 ### WC2026 API key missing
 If `lastFetched` stays `null` and `automaticFetching` is `false`, check that `WC2026_API_KEY` is set in `server/.env` and server was restarted.
 
-### SQL Server won't start
+### PostgreSQL won't start
 ```bash
 # Check logs
-docker-compose logs sqlserver
+docker-compose logs postgres
 
-# Increase memory if needed (SQL Server requires ~2GB)
+# Increase memory if needed (PostgreSQL requires ~1GB)
 ```
 
 ### Connection refused
-- Wait 20-30 seconds for SQL Server to initialize
+- Wait 10-15 seconds for PostgreSQL to initialize
 - Check DB_SERVER in docker-compose.yml matches container name
 
 ### Port already in use
 ```bash
-# Stop other SQL Server instances
+# Stop other PostgreSQL instances
 docker ps
 docker stop <container_id>
 ```
@@ -244,10 +264,8 @@ docker-compose up -d
 To completely wipe all data and start fresh:
 
 ```bash
-# Drop all tables
-docker exec mssql /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'YourStrong@Passw0rd' -d tipp \
-  -Q "EXEC sp_MSforeachtable 'DROP TABLE ?'"
+# Drop and recreate database
+docker exec tipp-postgres psql -U lportal -d tipp -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
 # Restart server (tables will be recreated and reseeded automatically)
 docker-compose restart server
@@ -266,13 +284,6 @@ This removes all users, predictions, and match results.
 - **No manual result entry**: Admins cannot POST scores — they are fetched automatically from WC2026 API.
 - **MatchKey mapping**: The scheduler maps WC2026 API's `match_number` to frontend keys: `gA0`–`gL5` (group stage, 6 per group) and `ko_r32_0`–`ko_f_0` (knockout).
 - **WC2026 API rate limit**: Free tier allows 100 requests/day. Scheduler fetches every 15 minutes × 24h = 96 requests/day. Within limit, but avoid extra manual calls.
-
-## Additional Documentation
-
-- **Server Architecture**: [server/ARCHITECTURE.md](./server/ARCHITECTURE.md) — module structure, patterns, request flow, adding endpoints
-- **API Examples**: [README_CURL.md](./README_CURL.md) — complete curl command reference for all endpoints
-- **Full Spec**: [SPEC.md](./SPEC.md) — original project specification
-
 
 ## Additional Documentation
 
