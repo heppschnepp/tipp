@@ -5,7 +5,6 @@ import {
   Results,
   parseScore,
   MAX_SCORE,
-  PROHIBITED,
 } from "../types";
 
 interface KnockoutTabData {
@@ -33,22 +32,27 @@ export default function KnockoutTab({
     setLocalPredictions(predictions);
   }, [predictions]);
 
-  const setScore = async (key: string, h: number | "", a: number | "") => {
-    if (h === "" && a === "") return;
-    setSaving(true);
-    try {
-      await api.predictions.save(key, h, a);
-      setLocalPredictions((prev) => ({
-        ...prev,
-        [key]: { homeScore: h as number, awayScore: a as number },
-      }));
-      showToast("Prediction saved");
-    } catch {
-      showToast("Failed to save");
-    } finally {
-      setSaving(false);
-    }
-  };
+const setScore = async (key: string, h: number | "", a: number | "") => {
+      if (h === "" && a === "") return;
+      // Prevent admins from making guesses
+      if (isAdmin) {
+        showToast("Admins cannot make predictions");
+        return;
+      }
+     setSaving(true);
+     try {
+       await api.predictions.save(key, h, a);
+       setLocalPredictions((prev) => ({
+         ...prev,
+         [key]: { homeScore: h as number, awayScore: a as number },
+       }));
+       showToast("Prediction saved");
+     } catch {
+       showToast("Failed to save");
+     } finally {
+       setSaving(false);
+     }
+   };
 
   return (
     <div className="knockout-section">
@@ -64,8 +68,8 @@ export default function KnockoutTab({
 
                 // Check if match is finished (has results)
                 const isMatchFinished =
-                  result?.homeScore !== undefined &&
-                  result?.awayScore !== undefined;
+                  result?.homeScore != null &&
+                  result?.awayScore != null;
 
                 const homeScore = sc?.homeScore;
                 const awayScore = sc?.awayScore;
@@ -84,11 +88,11 @@ export default function KnockoutTab({
                       </div>
                       {isAdmin ? (
                         <div className="bk-score-display">
-                          {homeScore !== undefined ? (
-                            <span>{homeScore}</span>
-                          ) : (
-                            <span className="not-started">{PROHIBITED}</span>
-                          )}
+                            {homeScore != null && homeScore !== undefined ? (
+                                <span>{homeScore}</span>
+                            ) : (
+                                <span className="not-started">no result available</span>
+                            )}
                         </div>
                       ) : (
                         <div className="bk-score-wrap">
@@ -131,11 +135,11 @@ export default function KnockoutTab({
                       </div>
                       {isAdmin ? (
                         <div className="bk-score-display">
-                          {awayScore !== undefined ? (
-                            <span>{awayScore}</span>
-                          ) : (
-                            <span className="not-started">Not started</span>
-                          )}
+                            {awayScore != null && awayScore !== undefined ? (
+                                <span>{awayScore}</span>
+                            ) : (
+                                <span className="not-started">no result available</span>
+                            )}
                         </div>
                       ) : (
                         <div className="bk-score-wrap">

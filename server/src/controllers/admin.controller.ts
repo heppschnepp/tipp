@@ -3,6 +3,8 @@ import { type Request, type Response } from "express";
 import { getDb } from "../db.js";
 import { simulator } from "../services/simulation.js";
 import { seedDatabase } from "../services/seed.js";
+import { wc2026 } from "../services/wc2026.js";
+import { mapMatchKey } from "../services/match-key-mapper.js";
 import type { UserRecord } from "../types/db.js";
 import type { ResetPasswordInput, SimulationInput } from "../validation/schemas.js";
 import { NotFoundError } from "../middleware/errorHandler.js";
@@ -114,4 +116,25 @@ export const getUsers = async (_req: Request, res: Response) => {
     createdAt: u.createdat,
   }));
   res.json(users);
+};
+
+export const getLiveResults = async (_req: Request, res: Response) => {
+  try {
+    const matches = await wc2026.getAllMatches();
+    const results: Record<string, { homeScore: number | null; awayScore: number | null; isKnockout: boolean; roundName: string | null }> = {};
+
+    for (const match of matches) {
+      const matchKey = mapMatchKey(match);
+      results[matchKey] = {
+        homeScore: match.home_score ?? null,
+        awayScore: match.away_score ?? null,
+        isKnockout: match.round !== "group",
+        roundName: match.round === "group" ? null : match.round,
+      };
+    }
+
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch live results from WC2026 API" });
+  }
 };

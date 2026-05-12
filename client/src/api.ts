@@ -155,6 +155,9 @@ export const api = {
           body: JSON.stringify({ userId, newPassword }),
         }),
     },
+    results: {
+      get: () => request<Results>("/admin/live-results"),
+    },
   },
 };
 

@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { api, Groups, Predictions } from "../api";
-import {
-  Results,
-  parseScore,
-  MAX_SCORE,
-  PROHIBITED,
-} from "../types";
+import { Results, parseScore, MAX_SCORE } from "../types";
 
-const groupStandings = (gk: string, groups: Groups, scores: Predictions | Results) => {
+const groupStandings = (
+  gk: string,
+  groups: Groups,
+  scores: Predictions | Results,
+) => {
   const g = groups[gk];
   if (!g) return [];
   const teams = g.teams.map((t) => ({
@@ -89,6 +88,10 @@ export default function GroupTab({
 
   const setScore = async (key: string, h: number | "", a: number | "") => {
     if (h === "" && a === "") return;
+    if (isAdmin) {
+      showToast("Admins cannot make predictions");
+      return;
+    }
     setSaving(true);
     try {
       await api.predictions.save(key, h, a);
@@ -126,10 +129,12 @@ export default function GroupTab({
       result?.homeScore !== undefined && result?.awayScore !== undefined;
 
     if (isAdminView) {
-      if (sc?.homeScore !== undefined && sc?.awayScore !== undefined) {
-        return `${sc.homeScore} : ${sc.awayScore}`;
+      const homeScore = sc?.homeScore;
+      const awayScore = sc?.awayScore;
+      if (homeScore !== undefined && homeScore !== null && awayScore !== undefined && awayScore !== null) {
+        return `${homeScore} : ${awayScore}`;
       }
-      return <span className="not-started">{PROHIBITED}</span>;
+      return <span className="not-started">no result available</span>;
     } else {
       return (
         <div className="score-input">
@@ -144,7 +149,11 @@ export default function GroupTab({
             onChange={(e) => {
               if (isMatchFinished) return;
               const val = parseScore(e.target.value);
-              setScore(key, val, sc.awayScore !== undefined ? sc.awayScore : "");
+              setScore(
+                key,
+                val,
+                sc.awayScore !== undefined ? sc.awayScore : "",
+              );
             }}
             onFocus={(e) => e.target.select()}
           />

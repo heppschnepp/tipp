@@ -13,10 +13,10 @@ export const getResults = async (_req: Request, res: Response) => {
   const results: Record<string, ResultInfo> = {};
   result.rows.forEach((row) => {
     results[row.matchkey] = {
-      homescores: row.homescore,
-      awayscore: row.awayscore,
-      isknockout: row.isknockout,
-      roundname: row.roundname,
+      homeScore: row.homescore,
+      awayScore: row.awayscore,
+      isKnockout: row.isknockout,
+      roundName: row.roundname,
     };
   });
 

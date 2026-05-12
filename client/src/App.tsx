@@ -132,6 +132,16 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
       setPredictions(p);
       setResults(r);
       setLeaderboard(l);
+
+      // Admin gets live results from WC2026 API
+      if (isAdmin) {
+        try {
+          const liveResults = await api.admin.results.get();
+          setResults(liveResults);
+        } catch {
+          // If live fetch fails, fall back to cached results
+        }
+      }
     } catch (err) {
       console.error(err);
     }

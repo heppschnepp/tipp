@@ -8,6 +8,7 @@ import {
   getSimulationStatus,
   seedData,
   getUsers,
+  getLiveResults,
 } from "../controllers/admin.controller.js";
 import { adminMiddleware } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
@@ -21,5 +22,6 @@ router.post("/cleanup-simulation", asyncHandler(cleanupSimulation));
 router.get("/simulate/status", asyncHandler(getSimulationStatus));
 router.post("/seed", asyncHandler(seedData));
 router.get("/users", asyncHandler(getUsers));
+router.get("/live-results", asyncHandler(getLiveResults));
 
 export const adminRouter: ReturnType<typeof Router> = router;

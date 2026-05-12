@@ -70,10 +70,10 @@ export interface CountResultRecord {
 }
 
 export interface ResultInfo {
-  homescores: number | null;
-  awayscore: number | null;
-  isknockout: boolean;
-  roundname: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  isKnockout: boolean;
+  roundName: string | null;
 }
 
 export interface LeaderboardEntry {
