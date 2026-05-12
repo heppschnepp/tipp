@@ -6,7 +6,10 @@ import { seedDatabase } from "../services/seed.js";
 import { wc2026 } from "../services/wc2026.js";
 import { mapMatchKey } from "../services/match-key-mapper.js";
 import type { UserRecord } from "../types/db.js";
-import type { ResetPasswordInput, SimulationInput } from "../validation/schemas.js";
+import type {
+  ResetPasswordInput,
+  SimulationInput,
+} from "../validation/schemas.js";
 import { NotFoundError } from "../middleware/errorHandler.js";
 
 export const resetPassword = async (
@@ -20,7 +23,7 @@ export const resetPassword = async (
 
   const result = await db.query(
     "UPDATE tipp_Users SET PasswordHash = $1 WHERE Id = $2 RETURNING Id",
-    [passwordHash, userId]
+    [passwordHash, userId],
   );
 
   if (result.rowCount === 0) {
@@ -72,14 +75,14 @@ export const getSimulationStatus = async (req: Request, res: Response) => {
   const db = await getDb();
 
   const usersResult = await db.query<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM tipp_Users WHERE Username LIKE 'player%'"
+    "SELECT COUNT(*) as cnt FROM tipp_Users WHERE Username LIKE 'player%'",
   );
   const predictionsResult = await db.query<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM tipp_Predictions"
+    "SELECT COUNT(*) as cnt FROM tipp_Predictions",
   );
-  const resultsResult = await db.query<{ cnt: number; withScores: number }>(`
-    SELECT COUNT(*) as cnt, 
-           SUM(CASE WHEN HomeScore IS NOT NULL AND AwayScore IS NOT NULL THEN 1 ELSE 0 END) as withScores
+  const resultsResult = await db.query<{ cnt: number; withscores: number }>(`
+    SELECT COUNT(*) as cnt,
+           SUM(CASE WHEN HomeScore IS NOT NULL AND AwayScore IS NOT NULL THEN 1 ELSE 0 END) as withscores
     FROM tipp_MatchResults
   `);
 
@@ -88,7 +91,7 @@ export const getSimulationStatus = async (req: Request, res: Response) => {
     totalPredictions: predictionsResult.rows[0].cnt,
     matchResults: {
       total: resultsResult.rows[0].cnt,
-      withScores: resultsResult.rows[0].withScores,
+      withScores: resultsResult.rows[0].withscores,
     },
     players: simulator
       .getPlayers()
@@ -107,7 +110,7 @@ export const seedData = async (_req: Request, res: Response) => {
 export const getUsers = async (_req: Request, res: Response) => {
   const db = await getDb();
   const result = await db.query<UserRecord>(
-    "SELECT id, username, isadmin, createdat FROM tipp_Users ORDER BY id"
+    "SELECT id, username, isadmin, createdat FROM tipp_Users ORDER BY id",
   );
   const users = result.rows.map((u) => ({
     id: u.id,
@@ -121,7 +124,15 @@ export const getUsers = async (_req: Request, res: Response) => {
 export const getLiveResults = async (_req: Request, res: Response) => {
   try {
     const matches = await wc2026.getAllMatches();
-    const results: Record<string, { homeScore: number | null; awayScore: number | null; isKnockout: boolean; roundName: string | null }> = {};
+    const results: Record<
+      string,
+      {
+        homeScore: number | null;
+        awayScore: number | null;
+        isKnockout: boolean;
+        roundName: string | null;
+      }
+    > = {};
 
     for (const match of matches) {
       const matchKey = mapMatchKey(match);
@@ -134,7 +145,9 @@ export const getLiveResults = async (_req: Request, res: Response) => {
     }
 
     res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch live results from WC2026 API" });
+  } catch {
+    res
+      .status(500)
+      .json({ error: "Failed to fetch live results from WC2026 API" });
   }
 };

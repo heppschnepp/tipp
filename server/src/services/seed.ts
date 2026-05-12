@@ -223,7 +223,7 @@ export async function seedDatabase(): Promise<void> {
       "SELECT Id, Name FROM tipp_Teams WHERE GroupName = $1 ORDER BY Id",
       [gm.group]
     );
-    const teamIds = teamsResult.rows.map((r: { Id: number }) => r.Id);
+    const teamIds = teamsResult.rows.map((r: { id: number }) => r.id);
 
     if (teamIds.length < 4) {
       console.warn(

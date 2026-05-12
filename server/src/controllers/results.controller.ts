@@ -24,7 +24,7 @@ export const getResults = async (_req: Request, res: Response) => {
 };
 
 export const getFetchStatus = async (req: Request, res: Response) => {
-  const isAdmin = (req as { user?: { isadmin: boolean } }).user?.isadmin;
+  const isAdmin = (req as { user?: { isAdmin: boolean } }).user?.isAdmin;
   if (!isAdmin) {
     throw new ForbiddenError("Admin access required");
   }
@@ -41,7 +41,7 @@ export const getFetchStatus = async (req: Request, res: Response) => {
 
   const countResult = await db.query<CountResultRecord>(`
     SELECT COUNT(*) as total,
-           SUM(CASE WHEN homescores IS NOT NULL AND awayscore IS NOT NULL THEN 1 ELSE 0 END) as withscores
+           SUM(CASE WHEN homescore IS NOT NULL AND awayscore IS NOT NULL THEN 1 ELSE 0 END) as withscores
   FROM tipp_matchresults
   `);
 

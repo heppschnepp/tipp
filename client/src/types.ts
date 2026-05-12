@@ -18,10 +18,10 @@ export interface Predictions {
 
 export interface Results {
   [key: string]: {
-    homeScore: number;
-    awayScore: number;
+    homeScore: number | null;
+    awayScore: number | null;
     isKnockout: boolean;
-    roundName: string;
+    roundName: string | null;
   };
 }
 

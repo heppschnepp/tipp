@@ -23,7 +23,7 @@ const groupStandings = (
   g.matches.forEach((m, i) => {
     const key = `g${gk}m${i}`;
     const sc = scores[key];
-    if (sc && sc.homeScore !== undefined && sc.awayScore !== undefined) {
+    if (sc && sc.homeScore != null && sc.awayScore != null) {
       const h = sc.homeScore;
       const a = sc.awayScore;
       teams[m[0]].gf += h;
@@ -126,7 +126,7 @@ export default function GroupTab({
     const result = results[key];
 
     const isMatchFinished =
-      result?.homeScore !== undefined && result?.awayScore !== undefined;
+      result?.homeScore != null && result?.awayScore != null;
 
     if (isAdminView) {
       const homeScore = sc?.homeScore;
@@ -144,7 +144,7 @@ export default function GroupTab({
             min="0"
             max={MAX_SCORE}
             disabled={saving || isMatchFinished}
-            value={sc.homeScore !== undefined ? sc.homeScore : ""}
+            value={sc.homeScore !== undefined && sc.homeScore !== null ? sc.homeScore : ""}
             placeholder="-"
             onChange={(e) => {
               if (isMatchFinished) return;
@@ -152,7 +152,7 @@ export default function GroupTab({
               setScore(
                 key,
                 val,
-                sc.awayScore !== undefined ? sc.awayScore : "",
+                sc.awayScore !== undefined && sc.awayScore !== null ? sc.awayScore : "",
               );
             }}
             onFocus={(e) => e.target.select()}
@@ -164,14 +164,14 @@ export default function GroupTab({
             min="0"
             max={MAX_SCORE}
             disabled={saving || isMatchFinished}
-            value={sc.awayScore !== undefined ? sc.awayScore : ""}
+            value={sc.awayScore !== undefined && sc.awayScore !== null ? sc.awayScore : ""}
             placeholder="-"
             onChange={(e) => {
               if (isMatchFinished) return;
               const val = parseScore(e.target.value);
               setScore(
                 key,
-                sc.homeScore !== undefined ? sc.homeScore : "",
+                sc.homeScore !== undefined && sc.homeScore !== null ? sc.homeScore : "",
                 val,
               );
             }}

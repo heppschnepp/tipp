@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import { getDb } from "../db.js";
-import { wc2026, WC2026Match } from "./wc2026.js";
+import { wc2026 } from "./wc2026.js";
 import { mapMatchKey } from "./match-key-mapper.js";
 
 export class ResultScheduler {
@@ -65,8 +65,8 @@ export class ResultScheduler {
         const existingRow = existing.rows[0];
         if (
           existingRow &&
-          existingRow.HomeScore === match.home_score &&
-          existingRow.AwayScore === match.away_score
+          existingRow.homescore === match.home_score &&
+          existingRow.awayscore === match.away_score
         ) {
           skipped++;
           continue;

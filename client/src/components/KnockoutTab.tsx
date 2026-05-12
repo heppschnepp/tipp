@@ -73,10 +73,12 @@ const setScore = async (key: string, h: number | "", a: number | "") => {
 
                 const homeScore = sc?.homeScore;
                 const awayScore = sc?.awayScore;
-                return (
+                const homeScoreVal = homeScore ?? 0;
+                const awayScoreVal = awayScore ?? 0;
+return (
                   <div key={i} className="bk-match">
                     <div
-                      className={`bk-team ${homeScore > awayScore ? "winner" : ""}`}
+                      className={`bk-team ${homeScoreVal > awayScoreVal ? "winner" : ""}`}
                     >
                       <div className="bk-team-info">
                         <img
@@ -103,13 +105,13 @@ const setScore = async (key: string, h: number | "", a: number | "") => {
                             min="0"
                             max={MAX_SCORE}
                             disabled={saving || isMatchFinished}
-                            value={homeScore !== undefined ? homeScore : ""}
+                            value={homeScore != null ? homeScore : ""}
                             placeholder="-"
                             onChange={(e) => {
                               // Don't allow changes if match is finished
                               if (isMatchFinished) return;
                               const val = parseScore(e.target.value);
-                              setScore(key, val, awayScore);
+                              setScore(key, val, awayScore != null ? awayScore : "");
                             }}
                             onFocus={(e) => e.target.select()}
                           />
@@ -123,7 +125,7 @@ const setScore = async (key: string, h: number | "", a: number | "") => {
                       )}
                     </div>
                     <div
-                      className={`bk-team ${awayScore > homeScore ? "winner" : ""}`}
+                      className={`bk-team ${awayScoreVal > homeScoreVal ? "winner" : ""}`}
                     >
                       <div className="bk-team-info away">
                         <span className="bk-team-name">TBD</span>
@@ -150,13 +152,13 @@ const setScore = async (key: string, h: number | "", a: number | "") => {
                             min="0"
                             max={MAX_SCORE}
                             disabled={saving || isMatchFinished}
-                            value={awayScore !== undefined ? awayScore : ""}
+                            value={awayScore != null ? awayScore : ""}
                             placeholder="-"
                             onChange={(e) => {
                               // Don't allow changes if match is finished
                               if (isMatchFinished) return;
                               const val = parseScore(e.target.value);
-                              setScore(key, homeScore, val);
+                              setScore(key, homeScore != null ? homeScore : "", val);
                             }}
                             onFocus={(e) => e.target.select()}
                           />

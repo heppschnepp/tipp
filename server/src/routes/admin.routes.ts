@@ -10,11 +10,12 @@ import {
   getUsers,
   getLiveResults,
 } from "../controllers/admin.controller.js";
-import { adminMiddleware } from "../middleware/auth.js";
+import { authMiddleware, adminMiddleware } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/errorHandler.js";
 
 const router: ReturnType<typeof Router> = Router();
 
+router.use(asyncHandler(authMiddleware));
 router.use(asyncHandler(adminMiddleware));
 router.post("/reset-password", validate(resetPasswordSchema), asyncHandler(resetPassword));
 router.post("/simulate", validate(simulationSchema), asyncHandler(simulate));

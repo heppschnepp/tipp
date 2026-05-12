@@ -97,7 +97,7 @@ router.get("/export-pdf", authMiddleware, asyncHandler(async (req: Request, res:
   }
   const scoresMap: ScoresMap = {};
 
-   if ((req as { user?: { isadmin: boolean } }).user?.isadmin) {
+   if ((req as { user?: { isAdmin: boolean } }).user?.isAdmin) {
      const resultsResult = await db.query<{ matchkey: string; homescore: number | null; awayscore: number | null }>(
        'SELECT matchkey, homescore, awayscore FROM tipp_matchresults',
      );

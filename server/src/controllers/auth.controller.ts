@@ -80,7 +80,7 @@ export const getMe = async (req: Request, res: Response) => {
 
   const db = await getDb();
   const result = await db.query(
-    "SELECT Id, Username, IsAdmin, CreatedAt FROM tipp_Users WHERE Id = $1",
+    "SELECT id, username, isadmin, createdat FROM tipp_Users WHERE id = $1",
     [userId]
   );
 
@@ -91,10 +91,10 @@ export const getMe = async (req: Request, res: Response) => {
   const u = result.rows[0];
   res.json({
     user: {
-      id: u.Id,
-      username: u.Username,
-      isAdmin: !!u.IsAdmin,
-      createdAt: u.CreatedAt,
+      id: u.id,
+      username: u.username,
+      isAdmin: !!u.isadmin,
+      createdAt: u.createdat,
     },
   });
 };

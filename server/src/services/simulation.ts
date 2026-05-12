@@ -58,7 +58,7 @@ export class TournamentSimulator {
       const password = `test123`;
 
       const existing = await db.query(
-        "SELECT Id, IsAdmin FROM tipp_Users WHERE Username = $1",
+        "SELECT id, isadmin FROM tipp_Users WHERE username = $1",
         [username]
       );
 
