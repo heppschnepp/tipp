@@ -13,7 +13,7 @@ export const getUserPredictions = async (req: Request, res: Response) => {
 
   const db = await getDb();
   const result = await db.query<PredictionRow>(
-    "SELECT matchkey, homescore, awayscore FROM tipp_Predictions WHERE userId = $1",
+    "SELECT matchkey, homescore, awayscore FROM tipp_predictions WHERE userid = $1",
     [userId]
   );
 
@@ -34,7 +34,11 @@ export const savePrediction = async (
    req: Request,
    res: Response,
 ) => {
-   const { matchKey, homeScore, awayScore } = (req as ValidatedRequest<PredictionInput>).validated;
+   const validated = (req as ValidatedRequest<PredictionInput>).validated;
+   if (!validated) {
+      throw new UnauthorizedError("Invalid request");
+   }
+   const { matchKey, homeScore, awayScore } = validated;
    const userId = (req as { user?: { userId: number } }).user?.userId;
 
    if (!userId) {
@@ -43,12 +47,12 @@ export const savePrediction = async (
 
    const db = await getDb();
    await db.query(
-      `INSERT INTO tipp_Predictions (UserId, MatchKey, HomeScore, AwayScore, UpdatedAt)
+      `INSERT INTO tipp_predictions (userid, matchkey, homescore, awayscore, updatedat)
        VALUES ($1, $2, $3, $4, NOW())
-       ON CONFLICT (UserId, MatchKey) DO UPDATE
-       SET HomeScore = EXCLUDED.HomeScore,
-           AwayScore = EXCLUDED.AwayScore,
-           UpdatedAt = EXCLUDED.UpdatedAt;`,
+       ON CONFLICT (userid, matchkey) DO UPDATE
+       SET homescore = EXCLUDED.homescore,
+           awayscore = EXCLUDED.awayscore,
+           updatedat = EXCLUDED.updatedat;`,
       [userId, matchKey, homeScore, awayScore]
    );
 
@@ -65,7 +69,7 @@ export const deletePrediction = async (req: Request, res: Response) => {
 
    const db = await getDb();
    await db.query(
-      "DELETE FROM tipp_Predictions WHERE UserId = $1 AND MatchKey = $2",
+      "DELETE FROM tipp_predictions WHERE userid = $1 AND matchkey = $2",
       [userId, matchKey]
    );
 

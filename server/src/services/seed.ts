@@ -197,78 +197,78 @@ export const KNOCKOUT_ROUNDS = [
 ];
 
 export async function seedDatabase(): Promise<void> {
-  const db = await getDb();
+   const db = await getDb();
 
-  // Check if teams already exist
-  const teamsCheck = await db.query("SELECT COUNT(*) as cnt FROM tipp_Teams");
-  const teamsExist = teamsCheck.rows[0].cnt > 0;
+   // Check if teams already exist
+   const teamsCheck = await db.query("SELECT COUNT(*) as cnt FROM tipp_teams");
+   const teamsExist = teamsCheck.rows[0].cnt > 0;
 
-  // Insert teams if missing
-  if (!teamsExist) {
-    console.log("Inserting teams...");
-    for (const team of SEED_TEAMS) {
-      await db.query(
-        "INSERT INTO tipp_Teams (Name, Code, GroupName) VALUES ($1, $2, $3)",
-        [team.name, team.code, team.group]
-      );
-    }
-  } else {
-    console.log("Teams already exist, skipping team insertion.");
-  }
+   // Insert teams if missing
+   if (!teamsExist) {
+     console.log("Inserting teams...");
+     for (const team of SEED_TEAMS) {
+       await db.query(
+         "INSERT INTO tipp_teams (name, code, groupname) VALUES ($1, $2, $3)",
+         [team.name, team.code, team.group]
+       );
+     }
+   } else {
+     console.log("Teams already exist, skipping team insertion.");
+   }
 
-  // Ensure group matches exist (idempotent)
-  console.log("Ensuring group stage matches...");
-  for (const gm of GROUP_MATCHES) {
-    const teamsResult = await db.query(
-      "SELECT Id, Name FROM tipp_Teams WHERE GroupName = $1 ORDER BY Id",
-      [gm.group]
-    );
-    const teamIds = teamsResult.rows.map((r: { id: number }) => r.id);
+   // Ensure group matches exist (idempotent)
+   console.log("Ensuring group stage matches...");
+   for (const gm of GROUP_MATCHES) {
+     const teamsResult = await db.query(
+       "SELECT id, name FROM tipp_teams WHERE groupname = $1 ORDER BY id",
+       [gm.group]
+     );
+     const teamIds = teamsResult.rows.map((r: { id: number }) => r.id);
 
-    if (teamIds.length < 4) {
-      console.warn(
-        `Group ${gm.group} has only ${teamIds.length} teams, expected 4. Skipping...`,
-      );
-      continue;
-    }
+     if (teamIds.length < 4) {
+       console.warn(
+         `Group ${gm.group} has only ${teamIds.length} teams, expected 4. Skipping...`,
+       );
+       continue;
+     }
 
-    for (let i = 0; i < gm.matches.length; i++) {
-      const [homeIdx, awayIdx] = gm.matches[i];
-      const matchKey = `g${gm.group}m${i}`;
-      await db.query(
-        `INSERT INTO tipp_Matches (MatchKey, GroupName, MatchType, RoundName, HomeTeamId, AwayTeamId, MatchOrder)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (MatchKey) DO NOTHING`,
-        [matchKey, gm.group, 'group', null, teamIds[homeIdx], teamIds[awayIdx], i]
-      );
-    }
-  }
+     for (let i = 0; i < gm.matches.length; i++) {
+       const [homeIdx, awayIdx] = gm.matches[i];
+       const matchKey = `g${gm.group}m${i}`;
+       await db.query(
+         `INSERT INTO tipp_matches (matchkey, groupname, matchtype, roundname, hometeamid, awayteamid, matchorder)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ON CONFLICT (matchkey) DO NOTHING`,
+         [matchKey, gm.group, 'group', null, teamIds[homeIdx], teamIds[awayIdx], i]
+       );
+     }
+   }
 
-  // Ensure knockout matches exist (idempotent)
-  console.log("Ensuring knockout stage matches...");
-  for (const kr of KNOCKOUT_ROUNDS) {
-    for (let i = 0; i < kr.count; i++) {
-      const roundId =
-        kr.round === "Round of 32"
-          ? "r32"
-          : kr.round === "Round of 16"
-            ? "r16"
-            : kr.round === "Quarter-finals"
-              ? "qf"
-              : kr.round === "Semi-finals"
-                ? "sf"
-                : kr.round === "3rd Place"
-                  ? "3rd"
-                  : "f";
-      const matchKey = `ko_${roundId}_${i}`;
-      await db.query(
-        `INSERT INTO tipp_Matches (MatchKey, GroupName, MatchType, RoundName, HomeTeamId, AwayTeamId, MatchOrder)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         ON CONFLICT (MatchKey) DO NOTHING`,
-        [matchKey, null, 'knockout', kr.round, null, null, i]
-      );
-    }
-  }
+   // Ensure knockout matches exist (idempotent)
+   console.log("Ensuring knockout stage matches...");
+   for (const kr of KNOCKOUT_ROUNDS) {
+     for (let i = 0; i < kr.count; i++) {
+       const roundId =
+         kr.round === "Round of 32"
+           ? "r32"
+           : kr.round === "Round of 16"
+             ? "r16"
+             : kr.round === "Quarter-finals"
+               ? "qf"
+               : kr.round === "Semi-finals"
+                 ? "sf"
+                 : kr.round === "3rd Place"
+                   ? "3rd"
+                   : "f";
+       const matchKey = `ko_${roundId}_${i}`;
+       await db.query(
+         `INSERT INTO tipp_matches (matchkey, groupname, matchtype, roundname, hometeamid, awayteamid, matchorder)
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ON CONFLICT (matchkey) DO NOTHING`,
+         [matchKey, null, 'knockout', kr.round, null, null, i]
+       );
+     }
+   }
 
-  console.log("Database seeding complete");
-}
+   console.log("Database seeding complete");
+ }

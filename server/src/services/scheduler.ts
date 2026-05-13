@@ -58,7 +58,7 @@ export class ResultScheduler {
 
         // Check if already exists with same scores (avoid redundant updates)
         const existing = await db.query(
-          "SELECT HomeScore, AwayScore FROM tipp_MatchResults WHERE MatchKey = $1",
+          "SELECT homescore, awayscore FROM tipp_matchresults WHERE matchkey = $1",
           [matchKey]
         );
 
@@ -75,15 +75,15 @@ export class ResultScheduler {
         // Insert or update result using ON CONFLICT
         await db.query(
           `
-          INSERT INTO tipp_MatchResults (MatchKey, HomeScore, AwayScore, IsKnockout, RoundName, UpdatedAt, LastFetchedAt)
+          INSERT INTO tipp_matchresults (matchkey, homescore, awayscore, isknockout, roundname, updatedat, lastfetchedat)
           VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-          ON CONFLICT (MatchKey) DO UPDATE
-          SET HomeScore = EXCLUDED.HomeScore,
-              AwayScore = EXCLUDED.AwayScore,
-              IsKnockout = EXCLUDED.IsKnockout,
-              RoundName = EXCLUDED.RoundName,
-              UpdatedAt = NOW(),
-              LastFetchedAt = NOW();
+          ON CONFLICT (matchkey) DO UPDATE
+          SET homescore = EXCLUDED.homescore,
+              awayscore = EXCLUDED.awayscore,
+              isknockout = EXCLUDED.isknockout,
+              roundname = EXCLUDED.roundname,
+              updatedat = NOW(),
+              lastfetchedat = NOW();
           `,
           [matchKey, match.home_score, match.away_score, match.round !== "group" ? 1 : 0, match.round === "group" ? null : match.round]
         );

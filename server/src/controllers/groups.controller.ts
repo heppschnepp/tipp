@@ -179,39 +179,39 @@ export const getKnockoutRounds = async (_req: Request, res: Response) => {
 };
 
 export const getMatches = async (_req: Request, res: Response) => {
-  const db = await getDb();
-  
-  // Get all matches with team information
-  const matchesResult = await db.query(`
-    SELECT 
-      m.MatchKey,
-      m.GroupName,
-      m.MatchType,
-      m.RoundName,
-      m.MatchOrder,
-      ht.Name as HomeTeamName,
-      at.Name as AwayTeamName
-    FROM tipp_Matches m
-    LEFT JOIN tipp_Teams ht ON m.HomeTeamId = ht.Id
-    LEFT JOIN tipp_Teams at ON m.AwayTeamId = at.Id
-    ORDER BY 
-      CASE 
-        WHEN m.MatchType = 'group' THEN 0 
-        ELSE 1 
-      END,
-      m.GroupName,
-      m.MatchOrder
-  `);
-  
-  const matches = matchesResult.rows.map(row => ({
-    matchKey: row.matchkey,
-    groupName: row.groupname,
-    matchType: row.matchtype,
-    roundName: row.roundname,
-    matchOrder: row.matchorder,
-    homeTeamName: row.hometeamname,
-    awayTeamName: row.awayteamname
-  }));
-  
-  res.json(matches);
+   const db = await getDb();
+   
+   // Get all matches with team information
+   const matchesResult = await db.query(`
+     SELECT 
+       m.matchkey,
+       m.groupname,
+       m.matchtype,
+       m.roundname,
+       m.matchorder,
+       ht.name as hometeamname,
+       at.name as awayteamname
+     FROM tipp_matches m
+     LEFT JOIN tipp_teams ht ON m.hometeamid = ht.id
+     LEFT JOIN tipp_teams at ON m.awayteamid = at.id
+     ORDER BY 
+       CASE 
+         WHEN m.matchtype = 'group' THEN 0 
+         ELSE 1 
+       END,
+       m.groupname,
+       m.matchorder
+   `);
+   
+   const matches = matchesResult.rows.map(row => ({
+     matchKey: row.matchkey,
+     groupName: row.groupname,
+     matchType: row.matchtype,
+     roundName: row.roundname,
+     matchOrder: row.matchorder,
+     homeTeamName: row.hometeamname,
+     awayTeamName: row.awayteamname
+   }));
+   
+   res.json(matches);
 };

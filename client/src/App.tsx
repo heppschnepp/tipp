@@ -114,7 +114,7 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   useEffect(() => {
     loadData();
-  }, []);
+  });
 
   const loadData = async () => {
     try {
@@ -149,86 +149,90 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   const isAdmin = user.isAdmin;
 
-    const loadUsers = async () => {
-      setLoadingUsers(true);
-      try {
-        const u = await api.admin.users.get();
-        setUsers(u);
-      } catch (err: unknown) {
-        showToast(err instanceof Error ? err.message : "Failed to load users");
-      } finally {
-        setLoadingUsers(false);
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const u = await api.admin.users.get();
+      setUsers(u);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Failed to load users");
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const [exporting, setExporting] = useState<boolean>(false);
+
+  const handleExportPdf = async () => {
+    setExporting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/export-pdf", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("PDF generation failed");
       }
-    };
 
-    const [exporting, setExporting] = useState<boolean>(false);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const dateStr = new Date().toISOString().split("T")[0];
+      a.download = `worldcup2026_matches_${dateStr}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      showToast("Failed to generate PDF. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
-    const handleExportPdf = async () => {
-      setExporting(true);
-      try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/export-pdf', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('PDF generation failed');
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const dateStr = new Date().toISOString().split('T')[0];
-        a.download = `worldcup2026_matches_${dateStr}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error('PDF export failed:', error);
-        showToast('Failed to generate PDF. Please try again.');
-      } finally {
-        setExporting(false);
-      }
-    };
-
-   return (
+  return (
     <>
-       <header>
-         <div>
-           <h1>⚽ World Cup 2026</h1>
-           <div className="subtitle">Prediction Game</div>
-         </div>
-          <div className="header-right">
-            <span className="user-name">{user.username}</span>
-            <button className="nav-btn" onClick={handleExportPdf} disabled={exporting}>
-              {exporting ? 'Exporting...' : 'Export PDF'}
-            </button>
-            <button className="nav-btn" onClick={onLogout}>
-              Logout
-            </button>
-          </div>
-       </header>
+      <header>
+        <div>
+          <h1>⚽ World Cup 2026</h1>
+          <div className="subtitle">Prediction Game</div>
+        </div>
+        <div className="header-right">
+          <span className="user-name">{user.username}</span>
+          <button
+            className="nav-btn"
+            onClick={handleExportPdf}
+            disabled={exporting}
+          >
+            {exporting ? "Exporting..." : "Export PDF"}
+          </button>
+          <button className="nav-btn" onClick={onLogout}>
+            Logout
+          </button>
+        </div>
+      </header>
       <Tabs
         tab={tab}
         setTab={setTab}
         isAdmin={user.isAdmin}
         onUsersClick={users.length === 0 ? loadUsers : undefined}
       />
-       <main>
-         {tab === "groups" && (
-           <GroupTab
-             groups={groups}
-             results={results}
-             teamCodes={teamCodes}
-             predictions={predictions}
-             isAdmin={isAdmin}
-             showToast={showToast}
-           />
-         )}
+      <main>
+        {tab === "groups" && (
+          <GroupTab
+            groups={groups}
+            results={results}
+            teamCodes={teamCodes}
+            predictions={predictions}
+            isAdmin={isAdmin}
+            showToast={showToast}
+          />
+        )}
         {tab === "knockout" && (
           <KnockoutTab
             isAdmin={isAdmin}

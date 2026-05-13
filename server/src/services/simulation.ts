@@ -58,7 +58,7 @@ export class TournamentSimulator {
       const password = `test123`;
 
       const existing = await db.query(
-        "SELECT id, isadmin FROM tipp_Users WHERE username = $1",
+        "SELECT id, isadmin FROM tipp_users WHERE username = $1",
         [username]
       );
 
@@ -71,7 +71,7 @@ export class TournamentSimulator {
        } else {
          const passwordHash = await bcrypt.hash(password, 10);
          const result = await db.query<{ id: number }>(
-           "INSERT INTO tipp_Users (username, passwordhash, isadmin) VALUES ($1, $2, $3) RETURNING id",
+           "INSERT INTO tipp_users (username, passwordhash, isadmin) VALUES ($1, $2, $3) RETURNING id",
            [username, passwordHash, 0]
          );
          userId = result.rows[0].id;
@@ -88,64 +88,64 @@ export class TournamentSimulator {
     return players;
   }
 
-  async makeRandomPredictions(player: UserInfo): Promise<void> {
-    const db = await getDb();
+async makeRandomPredictions(player: UserInfo): Promise<void> {
+     const db = await getDb();
 
-    for (const matchKey of this.matchKeys) {
-      const homeScore = this.getRandomScore();
-      const awayScore = this.getRandomScore();
+     for (const matchKey of this.matchKeys) {
+       const homeScore = this.getRandomScore();
+       const awayScore = this.getRandomScore();
 
-      await db.query(
-        `INSERT INTO tipp_Predictions (UserId, MatchKey, HomeScore, AwayScore, UpdatedAt)
-         VALUES ($1, $2, $3, $4, NOW())
-         ON CONFLICT (UserId, MatchKey) DO UPDATE
-         SET HomeScore = EXCLUDED.HomeScore,
-             AwayScore = EXCLUDED.AwayScore,
-             UpdatedAt = EXCLUDED.UpdatedAt;`,
-        [player.userId, matchKey, homeScore, awayScore]
-      );
-    }
-  }
+       await db.query(
+         `INSERT INTO tipp_predictions (userid, matchkey, homescore, awayscore, updatedat)
+          VALUES ($1, $2, $3, $4, NOW())
+          ON CONFLICT (userid, matchkey) DO UPDATE
+          SET homescore = EXCLUDED.homescore,
+              awayscore = EXCLUDED.awayscore,
+              updatedat = EXCLUDED.updatedat;`,
+         [player.userId, matchKey, homeScore, awayScore]
+       );
+     }
+   }
 
-  async generateMatchResults(): Promise<void> {
-    const db = await getDb();
+async generateMatchResults(): Promise<void> {
+     const db = await getDb();
 
-    for (const matchKey of this.matchKeys) {
-      const homeScore = this.getRandomScore(4);
-      const awayScore = this.getRandomScore(4);
-      const isKnockout = matchKey.startsWith("ko_");
+     for (const matchKey of this.matchKeys) {
+       const homeScore = this.getRandomScore(4);
+       const awayScore = this.getRandomScore(4);
+       const isKnockout = matchKey.startsWith("ko_");
 
-      let roundName = null;
-      if (matchKey.startsWith("g")) {
-        roundName = "group";
-      } else if (matchKey.includes("r32")) {
-        roundName = "Round of 32";
-      } else if (matchKey.includes("r16")) {
-        roundName = "Round of 16";
-      } else if (matchKey.includes("qf")) {
-        roundName = "Quarter-finals";
-      } else if (matchKey.includes("sf")) {
-        roundName = "Semi-finals";
-      } else if (matchKey.includes("3rd")) {
-        roundName = "3rd Place";
-      } else if (matchKey.includes("f_")) {
-        roundName = "Final";
-      }
+       let roundName = null;
+       if (matchKey.startsWith("g")) {
+         roundName = "group";
+       } else if (matchKey.includes("r32")) {
+         roundName = "Round of 32";
+       } else if (matchKey.includes("r16")) {
+         roundName = "Round of 16";
+       } else if (matchKey.includes("qf")) {
+         roundName = "Quarter-finals";
+       } else if (matchKey.includes("sf")) {
+         roundName = "Semi-finals";
+       } else if (matchKey.includes("3rd")) {
+         roundName = "3rd Place";
+       } else if (matchKey.includes("f_")) {
+         roundName = "Final";
+       }
 
-      await db.query(
-        `INSERT INTO tipp_MatchResults (MatchKey, HomeScore, AwayScore, IsKnockout, RoundName, UpdatedAt, LastFetchedAt)
-         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
-         ON CONFLICT (MatchKey) DO UPDATE
-         SET HomeScore = EXCLUDED.HomeScore,
-             AwayScore = EXCLUDED.AwayScore,
-             IsKnockout = EXCLUDED.IsKnockout,
-             RoundName = EXCLUDED.RoundName,
-             UpdatedAt = NOW(),
-             LastFetchedAt = NOW();`,
-        [matchKey, homeScore, awayScore, isKnockout ? 1 : 0, roundName]
-      );
-    }
-  }
+       await db.query(
+         `INSERT INTO tipp_matchresults (matchkey, homescore, awayscore, isknockout, roundname, updatedat, lastfetchedat)
+          VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+          ON CONFLICT (matchkey) DO UPDATE
+          SET homescore = EXCLUDED.homescore,
+              awayscore = EXCLUDED.awayscore,
+              isknockout = EXCLUDED.isknockout,
+              roundname = EXCLUDED.roundname,
+              updatedat = NOW(),
+              lastfetchedat = NOW();`,
+         [matchKey, homeScore, awayScore, isKnockout ? 1 : 0, roundName]
+       );
+     }
+   }
 
   async runFullSimulation(playerCount: number = 6): Promise<{
     players: UserInfo[];
@@ -169,44 +169,44 @@ export class TournamentSimulator {
     };
   }
 
-  async cleanupSimulationData(): Promise<{
-    usersDeleted: number;
-    predictionsDeleted: number;
-    resultsDeleted: number;
-  }> {
-    const db = await getDb();
+async cleanupSimulationData(): Promise<{
+     usersDeleted: number;
+     predictionsDeleted: number;
+     resultsDeleted: number;
+   }> {
+     const db = await getDb();
 
-    let usersDeleted = 0;
-    let predictionsDeleted = 0;
-    let resultsDeleted = 0;
+     let usersDeleted = 0;
+     let predictionsDeleted = 0;
+     let resultsDeleted = 0;
 
-    if (this.simulatedPlayers.length > 0) {
-      const userIds = this.simulatedPlayers.map((p) => p.userId);
+     if (this.simulatedPlayers.length > 0) {
+       const userIds = this.simulatedPlayers.map((p) => p.userId);
 
-      const predResult = await db.query(
-        "DELETE FROM tipp_Predictions WHERE UserId = ANY($1)",
-        [userIds]
-      );
-      predictionsDeleted = predResult.rowCount ?? 0;
+       const predResult = await db.query(
+         "DELETE FROM tipp_predictions WHERE userid = ANY($1)",
+         [userIds]
+       );
+       predictionsDeleted = predResult.rowCount ?? 0;
 
-      const userResult = await db.query(
-        "DELETE FROM tipp_Users WHERE Id = ANY($1)",
-        [userIds]
-      );
-      usersDeleted = userResult.rowCount ?? 0;
+       const userResult = await db.query(
+         "DELETE FROM tipp_users WHERE id = ANY($1)",
+         [userIds]
+       );
+       usersDeleted = userResult.rowCount ?? 0;
 
-      this.simulatedPlayers = [];
-    }
+       this.simulatedPlayers = [];
+     }
 
-    const resultResult = await db.query("DELETE FROM tipp_MatchResults");
-    resultsDeleted = resultResult.rowCount ?? 0;
+     const resultResult = await db.query("DELETE FROM tipp_matchresults");
+     resultsDeleted = resultResult.rowCount ?? 0;
 
-    return {
-      usersDeleted,
-      predictionsDeleted,
-      resultsDeleted,
-    };
-  }
+     return {
+       usersDeleted,
+       predictionsDeleted,
+       resultsDeleted,
+     };
+   }
 
   getMatchKeys(): string[] {
     return [...this.matchKeys];

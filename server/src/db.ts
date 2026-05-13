@@ -22,88 +22,88 @@ export async function initDatabase(): Promise<void> {
     const createTables = `
       DO $$
       BEGIN
-        -- Create tipp_Users table if it doesn't exist
+        -- Create tipp_users table if it doesn't exist
         IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'tipp_users') THEN
-          CREATE TABLE tipp_Users (
-            Id SERIAL PRIMARY KEY,
-            Username VARCHAR(50) UNIQUE NOT NULL,
-            PasswordHash VARCHAR(255) NOT NULL,
-            Email VARCHAR(100),
-            CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            IsAdmin BOOLEAN DEFAULT FALSE
+          CREATE TABLE tipp_users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(50) UNIQUE NOT NULL,
+            passwordhash VARCHAR(255) NOT NULL,
+            email VARCHAR(100),
+            createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            isadmin BOOLEAN DEFAULT FALSE
           );
         END IF;
 
-        -- Create tipp_Predictions table if it doesn't exist
+        -- Create tipp_predictions table if it doesn't exist
         IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'tipp_predictions') THEN
-          CREATE TABLE tipp_Predictions (
-            Id SERIAL PRIMARY KEY,
-            UserId INTEGER REFERENCES tipp_Users(Id),
-            MatchKey VARCHAR(20) NOT NULL,
-            HomeScore INTEGER NULL,
-            AwayScore INTEGER NULL,
-            CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(UserId, MatchKey)
+          CREATE TABLE tipp_predictions (
+            id SERIAL PRIMARY KEY,
+            userid INTEGER REFERENCES tipp_users(id),
+            matchkey VARCHAR(20) NOT NULL,
+            homescore INTEGER NULL,
+            awayscore INTEGER NULL,
+            createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updatedat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(userid, matchkey)
           );
         END IF;
 
-        -- Create tipp_MatchResults table if it doesn't exist
+        -- Create tipp_matchresults table if it doesn't exist
         IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'tipp_matchresults') THEN
-          CREATE TABLE tipp_MatchResults (
-            Id SERIAL PRIMARY KEY,
-            MatchKey VARCHAR(20) UNIQUE NOT NULL,
-            HomeScore INTEGER NULL,
-            AwayScore INTEGER NULL,
-            IsKnockout BOOLEAN DEFAULT FALSE,
-            RoundName VARCHAR(50),
-            UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            LastFetchedAt TIMESTAMP NULL
+          CREATE TABLE tipp_matchresults (
+            id SERIAL PRIMARY KEY,
+            matchkey VARCHAR(20) UNIQUE NOT NULL,
+            homescore INTEGER NULL,
+            awayscore INTEGER NULL,
+            isknockout BOOLEAN DEFAULT FALSE,
+            roundname VARCHAR(50),
+            updatedat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            lastfetchedat TIMESTAMP NULL
           );
         END IF;
 
-        -- Create tipp_GameSessions table if it doesn't exist
+        -- Create tipp_gamesessions table if it doesn't exist
         IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'tipp_gamesessions') THEN
-          CREATE TABLE tipp_GameSessions (
-            Id SERIAL PRIMARY KEY,
-            Name VARCHAR(100) NOT NULL,
-            CreatedBy INTEGER REFERENCES tipp_Users(Id),
-            CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            IsActive BOOLEAN DEFAULT TRUE
+          CREATE TABLE tipp_gamesessions (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL,
+            createdby INTEGER REFERENCES tipp_users(id),
+            createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            isactive BOOLEAN DEFAULT TRUE
           );
         END IF;
 
-        -- Create tipp_SessionPlayers table if it doesn't exist
+        -- Create tipp_sessionplayers table if it doesn't exist
         IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'tipp_sessionplayers') THEN
-          CREATE TABLE tipp_SessionPlayers (
-            SessionId INTEGER REFERENCES tipp_GameSessions(Id),
-            UserId INTEGER REFERENCES tipp_Users(Id),
-            JoinedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (SessionId, UserId)
+          CREATE TABLE tipp_sessionplayers (
+            sessionid INTEGER REFERENCES tipp_gamesessions(id),
+            userid INTEGER REFERENCES tipp_users(id),
+            joinedat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (sessionid, userid)
           );
         END IF;
 
-        -- Create tipp_Teams table if it doesn't exist
+        -- Create tipp_teams table if it doesn't exist
         IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'tipp_teams') THEN
-          CREATE TABLE tipp_Teams (
-            Id SERIAL PRIMARY KEY,
-            Name VARCHAR(50) UNIQUE NOT NULL,
-            Code VARCHAR(10),
-            GroupName CHAR(1)
+          CREATE TABLE tipp_teams (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(50) UNIQUE NOT NULL,
+            code VARCHAR(10),
+            groupname CHAR(1)
           );
         END IF;
 
-        -- Create tipp_Matches table if it doesn't exist
+        -- Create tipp_matches table if it doesn't exist
         IF NOT EXISTS (SELECT FROM pg_tables WHERE tablename = 'tipp_matches') THEN
-          CREATE TABLE tipp_Matches (
-            Id SERIAL PRIMARY KEY,
-            MatchKey VARCHAR(20) UNIQUE NOT NULL,
-            GroupName CHAR(1),
-            MatchType VARCHAR(20) DEFAULT 'group',
-            RoundName VARCHAR(50),
-            HomeTeamId INTEGER REFERENCES tipp_Teams(Id),
-            AwayTeamId INTEGER REFERENCES tipp_Teams(Id),
-            MatchOrder INTEGER
+          CREATE TABLE tipp_matches (
+            id SERIAL PRIMARY KEY,
+            matchkey VARCHAR(20) UNIQUE NOT NULL,
+            groupname CHAR(1),
+            matchtype VARCHAR(20) DEFAULT 'group',
+            roundname VARCHAR(50),
+            hometeamid INTEGER REFERENCES tipp_teams(id),
+            awayteamid INTEGER REFERENCES tipp_teams(id),
+            matchorder INTEGER
           );
         END IF;
       END $$;
@@ -111,14 +111,14 @@ export async function initDatabase(): Promise<void> {
 
     await client.query(createTables);
     
-    // Add LastFetchedAt column if it doesn't exist (for existing installations)
+    // Add lastfetchedat column if it doesn't exist (for existing installations)
     await client.query(`
       DO $$
       BEGIN
         IF EXISTS (SELECT FROM pg_tables WHERE tablename = 'tipp_matchresults') THEN
           IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                          WHERE table_name = 'tipp_matchresults' AND column_name = 'lastfetchedat') THEN
-            ALTER TABLE tipp_MatchResults ADD COLUMN LastFetchedAt TIMESTAMP NULL;
+            ALTER TABLE tipp_matchresults ADD COLUMN lastfetchedat TIMESTAMP NULL;
           END IF;
         END IF;
       END $$;

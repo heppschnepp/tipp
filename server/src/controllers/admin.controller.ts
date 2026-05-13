@@ -13,24 +13,24 @@ import type {
 import { NotFoundError } from "../middleware/errorHandler.js";
 
 export const resetPassword = async (
-  req: Request<unknown, unknown, ResetPasswordInput>,
-  res: Response,
+   req: Request<unknown, unknown, ResetPasswordInput>,
+   res: Response,
 ) => {
-  const { userId, newPassword } = req.body;
+   const { userId, newPassword } = req.body;
 
-  const db = await getDb();
-  const passwordHash = await bcrypt.hash(newPassword, 10);
+   const db = await getDb();
+   const passwordHash = await bcrypt.hash(newPassword, 10);
 
-  const result = await db.query(
-    "UPDATE tipp_Users SET PasswordHash = $1 WHERE Id = $2 RETURNING Id",
-    [passwordHash, userId],
-  );
+   const result = await db.query(
+     "UPDATE tipp_users SET passwordhash = $1 WHERE id = $2 RETURNING id",
+     [passwordHash, userId],
+   );
 
-  if (result.rowCount === 0) {
-    throw new NotFoundError("User not found");
-  }
+   if (result.rowCount === 0) {
+     throw new NotFoundError("User not found");
+   }
 
-  res.json({ success: true });
+   res.json({ success: true });
 };
 
 export const simulate = async (
@@ -72,19 +72,19 @@ export const cleanupSimulation = async (_req: Request, res: Response) => {
 };
 
 export const getSimulationStatus = async (req: Request, res: Response) => {
-  const db = await getDb();
+   const db = await getDb();
 
-  const usersResult = await db.query<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM tipp_Users WHERE Username LIKE 'player%'",
-  );
-  const predictionsResult = await db.query<{ cnt: number }>(
-    "SELECT COUNT(*) as cnt FROM tipp_Predictions",
-  );
-  const resultsResult = await db.query<{ cnt: number; withscores: number }>(`
-    SELECT COUNT(*) as cnt,
-           SUM(CASE WHEN HomeScore IS NOT NULL AND AwayScore IS NOT NULL THEN 1 ELSE 0 END) as withscores
-    FROM tipp_MatchResults
-  `);
+   const usersResult = await db.query<{ cnt: number }>(
+     "SELECT COUNT(*) as cnt FROM tipp_users WHERE username LIKE 'player%'",
+   );
+   const predictionsResult = await db.query<{ cnt: number }>(
+     "SELECT COUNT(*) as cnt FROM tipp_predictions",
+   );
+   const resultsResult = await db.query<{ cnt: number; withscores: number }>(`
+     SELECT COUNT(*) as cnt,
+            SUM(CASE WHEN homescore IS NOT NULL AND awayscore IS NOT NULL THEN 1 ELSE 0 END) as withscores
+     FROM tipp_matchresults
+   `);
 
   res.json({
     simulatedPlayers: usersResult.rows[0].cnt,

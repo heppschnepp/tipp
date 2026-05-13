@@ -12,41 +12,41 @@ export interface LeaderboardEntry {
 }
 
 export const getLeaderboard = async (_req: Request, res: Response) => {
-  const db = await getDb();
+   const db = await getDb();
 
-  const resultsResult = await db.query<SimpleMatchResult>(
-    "SELECT MatchKey, HomeScore, AwayScore FROM tipp_MatchResults WHERE HomeScore IS NOT NULL AND AwayScore IS NOT NULL",
-  );
-  const results: Record<string, { h: number; a: number }> = {};
-  if (resultsResult.rows) {
-    resultsResult.rows.forEach((row) => {
-      if (row) {
-        results[row.matchkey] = { h: row.homescore, a: row.awayscore };
-      }
-    });
-  }
+   const resultsResult = await db.query<SimpleMatchResult>(
+     "SELECT matchkey, homescore, awayscore FROM tipp_matchresults WHERE homescore IS NOT NULL AND awayscore IS NOT NULL",
+   );
+   const results: Record<string, { h: number; a: number }> = {};
+   if (resultsResult.rows) {
+     resultsResult.rows.forEach((row) => {
+       if (row) {
+         results[row.matchkey] = { h: row.homescore, a: row.awayscore };
+       }
+     });
+   }
 
-  const predictionsResult = await db.query<PredictionRow>(
-    "SELECT UserId, MatchKey, HomeScore, AwayScore FROM tipp_Predictions",
-  );
-  const userPredictions: Record<number, Record<string, { h: number; a: number }>> = {};
-  if (predictionsResult.rows) {
-    predictionsResult.rows.forEach((row) => {
-      if (row) {
-        if (!userPredictions[row.userid]) userPredictions[row.userid] = {};
-        if (row.homescore !== null && row.awayscore !== null) {
-          userPredictions[row.userid][row.matchkey] = {
-            h: row.homescore,
-            a: row.awayscore,
-          };
-        }
-      }
-    });
-  }
+   const predictionsResult = await db.query<PredictionRow>(
+     "SELECT userid, matchkey, homescore, awayscore FROM tipp_predictions",
+   );
+   const userPredictions: Record<number, Record<string, { h: number; a: number }>> = {};
+   if (predictionsResult.rows) {
+     predictionsResult.rows.forEach((row) => {
+       if (row) {
+         if (!userPredictions[row.userid]) userPredictions[row.userid] = {};
+         if (row.homescore !== null && row.awayscore !== null) {
+           userPredictions[row.userid][row.matchkey] = {
+             h: row.homescore,
+             a: row.awayscore,
+           };
+         }
+       }
+     });
+   }
 
-  const usersResult = await db.query<SimpleUserRecord>(
-    "SELECT Id, Username FROM tipp_Users",
-  );
+   const usersResult = await db.query<SimpleUserRecord>(
+     "SELECT id, username FROM tipp_users",
+   );
   const users: Record<number, string> = {};
   if (usersResult.rows) {
     usersResult.rows.forEach((row) => {
