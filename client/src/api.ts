@@ -44,6 +44,16 @@ export interface TeamCodes {
   [key: string]: string;
 }
 
+export interface Match {
+  matchKey: string;
+  groupName: string | null;
+  matchType: string;
+  roundName: string | null;
+  matchOrder: number | null;
+  homeTeamName: string | null;
+  awayTeamName: string | null;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("token");
   const headers: HeadersInit = {
@@ -132,10 +142,14 @@ export const api = {
     get: () => request<Record<string, string>>("/team-codes"),
   },
 
-  knockout: {
-    get: () =>
-      request<{ id: string; name: string; matches: number }[]>("/knockout"),
-  },
+   knockout: {
+     get: () =>
+       request<{ id: string; name: string; matches: number }[]>("/knockout"),
+   },
+
+   matches: {
+     get: () => request<Match[]>("/matches"),
+   },
 
   admin: {
     users: {

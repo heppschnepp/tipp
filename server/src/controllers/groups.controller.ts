@@ -144,36 +144,36 @@ export const getKnockoutRounds = async (_req: Request, res: Response) => {
     return res.json([]);
   }
 
-  const result = await db.query<{ roundname: string; orderidx: number }>(`
-    SELECT DISTINCT roundname,
-      CASE roundname 
-        WHEN 'round of 32' THEN 1 
-        WHEN 'round of 16' THEN 2 
-        WHEN 'quarter-finals' THEN 3 
-        WHEN 'semi-finals' THEN 4 
-        WHEN '3rd place' THEN 5 
-        WHEN 'final' THEN 6 
-      END AS orderidx
-    FROM tipp_matches WHERE matchtype = 'knockout' AND roundname IS NOT NULL ORDER BY orderidx
-  `);
+   const result = await db.query<{ roundname: string; orderidx: number }>(`
+     SELECT DISTINCT roundname,
+       CASE roundname 
+         WHEN 'Round of 32' THEN 1 
+         WHEN 'Round of 16' THEN 2 
+         WHEN 'Quarter-finals' THEN 3 
+         WHEN 'Semi-finals' THEN 4 
+         WHEN '3rd Place' THEN 5 
+         WHEN 'Final' THEN 6 
+       END AS orderidx
+     FROM tipp_matches WHERE matchtype = 'knockout' AND roundname IS NOT NULL ORDER BY orderidx
+   `);
 
-  const rounds = result.rows.map((row) => {
-    const name = row.roundname;
-    let matches = 1;
-    if (name === "round of 32") matches = 16;
-    else if (name === "round of 16") matches = 8;
-    else if (name === "quarter-finals") matches = 4;
-    else if (name === "semi-finals") matches = 2;
+   const rounds = result.rows.map((row) => {
+     const name = row.roundname;
+     let matches = 1;
+     if (name === "Round of 32") matches = 16;
+     else if (name === "Round of 16") matches = 8;
+     else if (name === "Quarter-finals") matches = 4;
+     else if (name === "Semi-finals") matches = 2;
 
-    let id = "f";
-    if (name === "round of 32") id = "r32";
-    else if (name === "round of 16") id = "r16";
-    else if (name === "quarter-finals") id = "qf";
-    else if (name === "semi-finals") id = "sf";
-    else if (name === "3rd place") id = "3rd";
+     let id = "f";
+     if (name === "Round of 32") id = "r32";
+     else if (name === "Round of 16") id = "r16";
+     else if (name === "Quarter-finals") id = "qf";
+     else if (name === "Semi-finals") id = "sf";
+     else if (name === "3rd Place") id = "3rd";
 
-    return { id, name, matches };
-  });
+     return { id, name, matches };
+   });
 
   res.json(rounds);
 };

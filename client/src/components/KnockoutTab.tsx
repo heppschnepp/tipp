@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api, Predictions } from "../api";
+import type { Match } from "../types";
 import {
   KnockoutRound,
   Results,
@@ -12,6 +13,8 @@ interface KnockoutTabData {
   results: Results;
   predictions: Predictions;
   knockout: KnockoutRound[];
+  matches: Match[];
+  teamCodes: Record<string, string>;
   showToast: (msg: string) => void;
 }
 
@@ -20,6 +23,8 @@ export default function KnockoutTab({
   results,
   predictions,
   knockout,
+  matches,
+  teamCodes,
   showToast,
 }: KnockoutTabData) {
   const [localPredictions, setLocalPredictions] =
@@ -27,10 +32,22 @@ export default function KnockoutTab({
   const scores = isAdmin ? results : localPredictions;
   const [saving, setSaving] = useState<boolean>(false);
 
+  // Build a map of matchKey -> match data for quick lookup
+  const matchMap = matches.reduce<Record<string, Match>>((acc, m) => {
+    acc[m.matchKey] = m;
+    return acc;
+  }, {});
+
   // Update local predictions when props change
   useEffect(() => {
     setLocalPredictions(predictions);
   }, [predictions]);
+
+  const getFlagUrl = (teamName: string | null): string => {
+    if (!teamName) return "/flags/xx.png";
+    const code = teamCodes[teamName];
+    return code ? `/flags/${code}.png` : "/flags/xx.png";
+  };
 
 const setScore = async (key: string, h: number | "", a: number | "") => {
       if (h === "" && a === "") return;
@@ -64,9 +81,7 @@ const setScore = async (key: string, h: number | "", a: number | "") => {
               {Array.from({ length: r.matches }).map((_, i) => {
                 const key = `ko_${r.id}_${i}`;
                 const sc = scores[key] || {};
-                const result = results[key]; // Actual match results
-
-                // Check if match is finished (has results)
+                const result = results[key];
                 const isMatchFinished =
                   result?.homeScore != null &&
                   result?.awayScore != null;
@@ -75,18 +90,24 @@ const setScore = async (key: string, h: number | "", a: number | "") => {
                 const awayScore = sc?.awayScore;
                 const homeScoreVal = homeScore ?? 0;
                 const awayScoreVal = awayScore ?? 0;
-return (
+
+                // Look up actual match data
+                const matchData = matchMap[key];
+                const homeTeam = matchData?.homeTeamName || "TBD";
+                const awayTeam = matchData?.awayTeamName || "TBD";
+
+                return (
                   <div key={i} className="bk-match">
                     <div
                       className={`bk-team ${homeScoreVal > awayScoreVal ? "winner" : ""}`}
                     >
                       <div className="bk-team-info">
                         <img
-                          src="/flags/xx.png"
-                          alt="TBD"
+                          src={getFlagUrl(homeTeam)}
+                          alt={homeTeam}
                           className="team-flag"
                         />
-                        <span className="bk-team-name">TBD</span>
+                        <span className="bk-team-name">{homeTeam}</span>
                       </div>
                       {isAdmin ? (
                         <div className="bk-score-display">
@@ -108,7 +129,6 @@ return (
                             value={homeScore != null ? homeScore : ""}
                             placeholder="-"
                             onChange={(e) => {
-                              // Don't allow changes if match is finished
                               if (isMatchFinished) return;
                               const val = parseScore(e.target.value);
                               setScore(key, val, awayScore != null ? awayScore : "");
@@ -117,8 +137,7 @@ return (
                           />
                           {isMatchFinished && (
                             <span className="match-finished">
-                              (Match finished: {result?.homeScore} :{" "}
-                              {result?.awayScore})
+                              (Match finished: {result?.homeScore} : {result?.awayScore})
                             </span>
                           )}
                         </div>
@@ -128,10 +147,10 @@ return (
                       className={`bk-team ${awayScoreVal > homeScoreVal ? "winner" : ""}`}
                     >
                       <div className="bk-team-info away">
-                        <span className="bk-team-name">TBD</span>
+                        <span className="bk-team-name">{awayTeam}</span>
                         <img
-                          src="/flags/xx.png"
-                          alt="TBD"
+                          src={getFlagUrl(awayTeam)}
+                          alt={awayTeam}
                           className="team-flag"
                         />
                       </div>
@@ -155,7 +174,6 @@ return (
                             value={awayScore != null ? awayScore : ""}
                             placeholder="-"
                             onChange={(e) => {
-                              // Don't allow changes if match is finished
                               if (isMatchFinished) return;
                               const val = parseScore(e.target.value);
                               setScore(key, homeScore != null ? homeScore : "", val);
@@ -164,8 +182,7 @@ return (
                           />
                           {isMatchFinished && (
                             <span className="match-finished">
-                              (Match finished: {result?.homeScore} :{" "}
-                              {result?.awayScore})
+                              (Match finished: {result?.homeScore} : {result?.awayScore})
                             </span>
                           )}
                         </div>

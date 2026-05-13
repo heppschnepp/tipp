@@ -8,6 +8,7 @@ import {
   Results,
   LeaderboardEntry,
   KnockoutRound,
+  Match,
 } from "./types";
 import { Tabs } from "./components/Tabs";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -85,6 +86,7 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [groups, setGroups] = useState<Groups>({});
   const [teamCodes, setTeamCodes] = useState<Record<string, string>>({});
   const [knockout, setKnockout] = useState<KnockoutRound[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Predictions>({});
   const [results, setResults] = useState<Results>({});
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -118,10 +120,11 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   const loadData = async () => {
     try {
-      const [g, codes, k, p, r, l] = await Promise.all([
+      const [g, codes, k, m, p, r, l] = await Promise.all([
         api.groups.get(),
         api.teamCodes.get(),
         api.knockout.get(),
+        api.matches.get(),
         api.predictions.get(),
         api.results.get(),
         api.leaderboard.get(),
@@ -129,6 +132,7 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
       setGroups(g);
       setTeamCodes(codes);
       setKnockout(k);
+      setMatches(m);
       setPredictions(p);
       setResults(r);
       setLeaderboard(l);
@@ -239,6 +243,8 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
             results={results}
             predictions={predictions}
             knockout={knockout}
+            matches={matches}
+            teamCodes={teamCodes}
             showToast={showToast}
           />
         )}

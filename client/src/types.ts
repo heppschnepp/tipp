@@ -44,6 +44,16 @@ export interface KnockoutRound {
   matches: number;
 }
 
+export interface Match {
+  matchKey: string;
+  groupName: string | null;
+  matchType: string;
+  roundName: string | null;
+  matchOrder: number | null;
+  homeTeamName: string | null;
+  awayTeamName: string | null;
+}
+
 export interface TeamCodes {
   [key: string]: string;
 }
