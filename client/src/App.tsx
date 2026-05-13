@@ -114,7 +114,7 @@ function Game({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   useEffect(() => {
     loadData();
-  });
+  }, []);
 
   const loadData = async () => {
     try {
