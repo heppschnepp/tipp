@@ -524,51 +524,141 @@ main {
 
 .knockout-section {
   overflow-x: auto;
-  padding-bottom: 1rem;
+  padding: 2rem 0;
+  background: linear-gradient(135deg, var(--bg) 0%, var(--green-light) 100%);
 }
 .bracket {
   display: flex;
-  gap: 0;
+  flex-direction: row;
+  gap: 60px;
   align-items: flex-start;
-  min-width: 900px;
+  min-width: 1400px;
+  padding: 20px 40px;
+  position: relative;
+  margin: 0 auto;
 }
 .round {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
+  width: 140px;
 }
 .round-title {
   font-family: "Bebas Neue";
-  font-size: 16px;
-  letter-spacing: 1px;
+  font-size: 18px;
+  letter-spacing: 1.5px;
   color: var(--green);
-  padding: 8px 12px;
+  padding: 10px 14px;
   text-align: center;
-  background: var(--green-light);
-  border-radius: 6px;
-  margin-bottom: 12px;
+  background: var(--surface);
+  border: 2px solid var(--green);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  min-width: 140px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(10, 92, 54, 0.2);
+  font-weight: 600;
 }
 .bk-matches {
   display: flex;
   flex-direction: column;
   gap: 0;
-  flex: 1;
-  justify-content: space-around;
+  justify-content: flex-start;
 }
 .bk-match {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
   overflow: hidden;
-  margin: 4px 6px;
+  margin: 12px 0;
   position: relative;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s, box-shadow 0.15s;
+  z-index: 2;
+}
+.bk-match:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(10, 92, 54, 0.12);
+  border-color: var(--green-mid);
+}
+.bracket {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  align-items: center;
+  min-width: 1400px;
+  padding: 40px 60px;
+  position: relative;
+  margin: 0 auto;
+}
+.bracket::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 80px;
+  right: 80px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--green) 0%, var(--gold) 30%, var(--gold) 70%, var(--green) 100%);
+  transform: translateY(-50%);
+  z-index: 0;
+  border-radius: 2px;
+  box-shadow: 0 2px 8px rgba(10, 92, 54, 0.25);
+}
+.round {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
+  width: 140px;
+}
+.round-title {
+  font-family: "Bebas Neue";
+  font-size: 18px;
+  letter-spacing: 1.5px;
+  color: var(--green);
+  padding: 10px 14px;
+  text-align: center;
+  background: var(--surface);
+  border: 2px solid var(--green);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  min-width: 140px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(10, 92, 54, 0.2);
+  font-weight: 600;
+}
+.bk-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: flex-start;
+  position: relative;
+}
+.bk-match {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 12px 0;
+  position: relative;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s, box-shadow 0.15s;
+  z-index: 2;
+}
+.bk-match:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(10, 92, 54, 0.12);
+  border-color: var(--green-mid);
 }
 .bk-team {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 10px;
-  font-size: 13px;
+  padding: 6px 10px;
+  font-size: 12px;
   gap: 8px;
   border-bottom: 1px solid #f0ece3;
 }
@@ -582,20 +672,24 @@ main {
 .bk-team-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  max-width: 55%;
 }
 .bk-team-info.away {
   flex-direction: row-reverse;
+  justify-content: flex-end;
 }
 .bk-team-name {
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 80px;
 }
 .bk-score-wrap {
   display: flex;
   gap: 3px;
+  align-items: center;
 }
 .bk-score {
   width: 28px;
@@ -624,6 +718,140 @@ main {
   font-size: 12px;
   color: var(--muted);
   font-style: italic;
+}
+.bracket {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  align-items: center;
+  min-width: 1400px;
+  padding: 40px 60px;
+  position: relative;
+  margin: 0 auto;
+}
+.bracket::before {
+  content: '';
+  position: absolute;
+  top: 70px;
+  left: 60px;
+  right: 60px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--green) 0%, var(--gold) 50%, var(--green) 100%);
+  z-index: 0;
+}
+.round {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
+}
+.round-title {
+  font-family: "Bebas Neue";
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: var(--green);
+  padding: 8px 12px;
+  text-align: center;
+  background: var(--green-light);
+  border-radius: 6px;
+  margin-bottom: 16px;
+  min-width: 120px;
+}
+.bk-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  justify-content: flex-start;
+}
+.bk-match {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 6px 0;
+  position: relative;
+}
+.bk-team {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 12px;
+  gap: 8px;
+  border-bottom: 1px solid #f0ece3;
+}
+.bk-team:last-child {
+  border-bottom: none;
+}
+.bk-team.winner {
+  background: var(--green-light);
+  font-weight: 600;
+}
+.bk-team-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 50%;
+}
+.bk-team-info.away {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+.bk-team-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bk-score-wrap {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.bk-score {
+  width: 28px;
+  height: 24px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: "DM Sans";
+  background: var(--bg);
+  outline: none;
+}
+.bk-score:focus {
+  border-color: var(--green-mid);
+  background: #fff;
+}
+.bk-score-display {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+  min-width: 60px;
+  text-align: center;
+}
+.not-started {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* Connector lines between rounds */
+.bracket-round-connector {
+  position: absolute;
+  top: 50%;
+  width: 80px;
+  height: 2px;
+  background: var(--green);
+  z-index: 0;
+}
+.bracket-round-connector.left {
+  right: -80px;
+}
+.bracket-round-connector.right {
+  left: -80px;
 }
 
 .stats-grid {
